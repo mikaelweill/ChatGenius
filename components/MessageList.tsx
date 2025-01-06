@@ -15,30 +15,19 @@ type MessageListProps = {
   channelId: string
 }
 
-export default function MessageList({ channelId }: MessageListProps) {
-  const [messages, setMessages] = useState<Message[]>([])
-
-  useEffect(() => {
-    // Fetch messages from API
-    const fetchMessages = async () => {
-      // Replace with actual API call
-      const response = await fetch(`/api/channels/${channelId}/messages`)
-      const data = await response.json()
-      setMessages(data)
-    }
-
-    fetchMessages()
-  }, [channelId])
-
+export function MessageList() {
   return (
-    <div className="flex-1 overflow-y-auto p-4">
-      {messages.map((message) => (
-        <div key={message.id} className="mb-4">
-          <div className="font-semibold">{message.author.name}</div>
-          <div>{message.content}</div>
-          <div className="text-xs text-gray-500">{new Date(message.createdAt).toLocaleString()}</div>
+    <div className="p-6 space-y-6">
+      <div className="flex items-start space-x-4">
+        <div className="w-10 h-10 rounded-full bg-gray-300"></div>
+        <div>
+          <div className="flex items-baseline space-x-2">
+            <span className="font-semibold">John Doe</span>
+            <span className="text-sm text-gray-500">12:34 PM</span>
+          </div>
+          <p className="text-gray-700">Hello world!</p>
         </div>
-      ))}
+      </div>
     </div>
   )
 }
