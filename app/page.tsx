@@ -42,7 +42,7 @@ export default async function Home() {
         </header>
 
         <div className="flex-1 overflow-y-auto">
-          <MessageList />
+          <MessageList channelId={generalChannel.id} />
         </div>
 
         <MessageInput channelId={generalChannel.id} />
