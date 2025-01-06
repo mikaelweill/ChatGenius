@@ -6,34 +6,38 @@ import { MessageInput } from "@/components/MessageInput"
 import { prisma } from "@/lib/prisma"
 import { getMessages } from "@/components/MessageListServer"
 import { LogoutButton } from '@/components/LogoutButton'
+import { ChannelSwitcher } from "@/components/ChannelSwitcher"
 
 export const dynamic = 'force-dynamic'
 
-export default async function Home() {
+export default async function Home({
+  searchParams
+}: {
+  searchParams: { channel?: string }
+}) {
   try {
     const cookieStore = await cookies()
     const token = cookieStore.get('session-token')?.value
 
     if (!token) {
-      console.log('No token found, redirecting to signin')
       redirect('/signin')
     }
 
-    // Get or create the general channel
-    let generalChannel = await prisma.channel.findFirst({
-      where: { name: 'general' }
+    // Get all channels
+    const channels = await prisma.channel.findMany({
+      orderBy: { createdAt: 'asc' }
     })
 
-    if (!generalChannel) {
-      generalChannel = await prisma.channel.create({
-        data: {
-          name: 'general',
-          description: 'General discussion'
-        }
-      })
+    // Get current channel from URL or fallback to general
+    const currentChannel = searchParams.channel 
+      ? channels.find(c => c.id === searchParams.channel)
+      : channels.find(c => c.name === 'general') || channels[0]
+
+    if (!currentChannel) {
+      redirect('/error')
     }
 
-    const initialMessages = await getMessages(generalChannel.id)
+    const initialMessages = await getMessages(currentChannel.id)
 
     return (
       <div className="flex h-screen">
@@ -44,19 +48,22 @@ export default async function Home() {
           <div className="p-4 border-b border-gray-700">
             <h1 className="text-xl font-bold">ChatGenius</h1>
           </div>
-          <ChannelList />
+          <ChannelSwitcher 
+            channels={channels}
+            currentChannelId={currentChannel.id}
+          />
         </aside>
 
         <main className="flex-1 flex flex-col">
           <header className="h-16 border-b flex items-center px-6">
-            <h2 className="text-lg font-semibold"># general</h2>
+            <h2 className="text-lg font-semibold"># {currentChannel.name}</h2>
           </header>
 
           <div className="flex-1 overflow-y-auto">
-            <MessageList initialMessages={initialMessages} channelId={generalChannel.id} />
+            <MessageList initialMessages={initialMessages} channelId={currentChannel.id} />
           </div>
 
-          <MessageInput channelId={generalChannel.id} />
+          <MessageInput channelId={currentChannel.id} />
         </main>
       </div>
     )
@@ -65,4 +72,5 @@ export default async function Home() {
     redirect('/signin')
   }
 }
+
 
