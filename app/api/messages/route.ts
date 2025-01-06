@@ -1,13 +1,24 @@
 import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
-import { auth } from "@/auth"
+import { cookies } from "next/headers"
+import { jwtVerify } from "jose"
 
 export async function POST(req: Request) {
   try {
-    const session = await auth()
-    
-    if (!session?.user?.id) {
+    // Verify user is authenticated
+    const cookieStore = await cookies()
+    const token = cookieStore.get('next-auth.session-token')
+
+    if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Verify JWT
+    const secret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET)
+    const { payload } = await jwtVerify(token.value, secret)
+
+    if (!payload.id) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
 
     const { content, channelId } = await req.json()
@@ -16,7 +27,7 @@ export async function POST(req: Request) {
       data: {
         content,
         channelId,
-        authorId: session.user.id,
+        authorId: payload.id as string,
       },
       include: {
         author: {
