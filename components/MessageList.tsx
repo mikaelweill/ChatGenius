@@ -11,15 +11,18 @@ type MessageWithAuthor = Message & {
   }
 }
 
-interface MessageListProps {
+export function MessageList({ initialMessages, channelId }: { 
   initialMessages: MessageWithAuthor[]
-  channelId: string
-}
-
-export function MessageList({ initialMessages, channelId }: MessageListProps) {
+  channelId: string 
+}) {
   const [messages, setMessages] = useState<MessageWithAuthor[]>(initialMessages)
   const { socket, isConnected } = useSocket(channelId)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  // Reset messages when channel changes
+  useEffect(() => {
+    setMessages(initialMessages)
+  }, [channelId, initialMessages])
 
   const isNearBottom = () => {
     const container = containerRef.current
@@ -40,26 +43,27 @@ export function MessageList({ initialMessages, channelId }: MessageListProps) {
     if (!socket) return
 
     socket.on('message_received', (message: MessageWithAuthor) => {
-      const wasAtBottom = isNearBottom()
-      setMessages(prev => {
-        const newMessages = [...prev, message]
-        // Only scroll if we were at the bottom
-        if (wasAtBottom) {
-          // Force a scroll in the next tick
-          setTimeout(() => {
-            if (containerRef.current) {
-              containerRef.current.scrollTop = containerRef.current.scrollHeight
-            }
-          }, 0)
-        }
-        return newMessages
-      })
+      // Only add message if it belongs to current channel
+      if (message.channelId === channelId) {
+        const wasAtBottom = isNearBottom()
+        setMessages(prev => {
+          const newMessages = [...prev, message]
+          if (wasAtBottom) {
+            setTimeout(() => {
+              if (containerRef.current) {
+                containerRef.current.scrollTop = containerRef.current.scrollHeight
+              }
+            }, 0)
+          }
+          return newMessages
+        })
+      }
     })
 
     return () => {
       socket.off('message_received')
     }
-  }, [socket])
+  }, [socket, channelId]) // Added channelId as dependency
 
   return (
     <div 
