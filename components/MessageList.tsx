@@ -1,25 +1,59 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useSocket } from '@/hooks/useSocket'
 import { Message } from '@prisma/client'
 
 type MessageWithAuthor = Message & {
   author: {
     name: string
-    email: string
+    email: true
   }
 }
 
-export function MessageList({ channelId }: { channelId: string }) {
-  const [messages, setMessages] = useState<MessageWithAuthor[]>([])
+interface MessageListProps {
+  initialMessages: MessageWithAuthor[]
+  channelId: string
+}
+
+export function MessageList({ initialMessages, channelId }: MessageListProps) {
+  const [messages, setMessages] = useState<MessageWithAuthor[]>(initialMessages)
   const { socket, isConnected } = useSocket(channelId)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  const isNearBottom = () => {
+    const container = containerRef.current
+    if (!container) return false
+    
+    const threshold = 100 // pixels from bottom
+    return container.scrollHeight - container.scrollTop - container.clientHeight < threshold
+  }
+
+  // Scroll whenever messages change
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight
+    }
+  }, [messages])
 
   useEffect(() => {
     if (!socket) return
 
     socket.on('message_received', (message: MessageWithAuthor) => {
-      setMessages(prev => [...prev, message])
+      const wasAtBottom = isNearBottom()
+      setMessages(prev => {
+        const newMessages = [...prev, message]
+        // Only scroll if we were at the bottom
+        if (wasAtBottom) {
+          // Force a scroll in the next tick
+          setTimeout(() => {
+            if (containerRef.current) {
+              containerRef.current.scrollTop = containerRef.current.scrollHeight
+            }
+          }, 0)
+        }
+        return newMessages
+      })
     })
 
     return () => {
@@ -28,7 +62,11 @@ export function MessageList({ channelId }: { channelId: string }) {
   }, [socket])
 
   return (
-    <div className="flex-1 p-4 space-y-4 overflow-y-auto">
+    <div 
+      ref={containerRef}
+      style={{ height: 'calc(100vh - 200px)' }} // Fixed height
+      className="flex-1 p-4 space-y-4 overflow-y-auto"
+    >
       {messages.map((message) => (
         <div key={message.id} className="flex items-start gap-2">
           <div className="flex-shrink-0">
