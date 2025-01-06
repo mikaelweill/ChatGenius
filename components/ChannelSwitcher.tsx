@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Channel } from '@prisma/client'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 interface ChannelSwitcherProps {
   channels: Channel[]
@@ -30,22 +31,22 @@ export function ChannelSwitcher({ channels, currentChannelId }: ChannelSwitcherP
       const channel = await res.json()
       setNewChannelName('')
       setIsCreating(false)
-      router.push(`/?channel=${channel.id}`) // Navigate to the new channel
-      router.refresh() // Refresh the server components
+      router.push(`/channels/${channel.name}`)
+      router.refresh()
     } catch (error) {
       console.error('Error creating channel:', error)
     }
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 py-4">
       <div className="flex justify-between items-center px-4">
-        <h2 className="text-lg font-semibold">Channels</h2>
+        <h2 className="text-lg font-semibold text-gray-200">Channels</h2>
         <button
           onClick={() => setIsCreating(true)}
-          className="text-sm text-gray-400 hover:text-white"
+          className="w-6 h-6 rounded hover:bg-gray-700 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
         >
-          +
+          <span className="text-xl">+</span>
         </button>
       </div>
 
@@ -56,22 +57,28 @@ export function ChannelSwitcher({ channels, currentChannelId }: ChannelSwitcherP
             value={newChannelName}
             onChange={(e) => setNewChannelName(e.target.value)}
             placeholder="New channel name"
-            className="w-full px-2 py-1 text-sm text-black rounded"
+            className="w-full px-3 py-2 text-sm bg-gray-700 text-white rounded border border-gray-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-colors"
+            autoFocus
           />
         </form>
       )}
 
-      <div className="space-y-1">
+      <div className="space-y-0.5">
         {channels.map((channel) => (
-          <button
+          <Link
             key={channel.id}
-            onClick={() => router.push(`/?channel=${channel.id}`)}
-            className={`w-full px-4 py-1 text-left hover:bg-gray-700 ${
-              channel.id === currentChannelId ? 'bg-gray-700' : ''
+            href={`/channels/${channel.name}`}
+            className={`block w-full px-4 py-2 text-left transition-colors ${
+              channel.id === currentChannelId 
+                ? 'bg-gray-700 text-white' 
+                : 'text-gray-300 hover:bg-gray-700 hover:text-white'
             }`}
           >
-            # {channel.name}
-          </button>
+            <span className="flex items-center gap-2">
+              <span className="text-gray-400">#</span>
+              {channel.name}
+            </span>
+          </Link>
         ))}
       </div>
     </div>

@@ -11,18 +11,15 @@ type MessageWithAuthor = Message & {
   }
 }
 
-export function MessageList({ initialMessages, channelId }: { 
+interface MessageListProps {
   initialMessages: MessageWithAuthor[]
-  channelId: string 
-}) {
+  channelId: string
+}
+
+export function MessageList({ initialMessages, channelId }: MessageListProps) {
   const [messages, setMessages] = useState<MessageWithAuthor[]>(initialMessages)
   const { socket, isConnected } = useSocket(channelId)
   const containerRef = useRef<HTMLDivElement>(null)
-
-  // Reset messages when channel changes
-  useEffect(() => {
-    setMessages(initialMessages)
-  }, [channelId, initialMessages])
 
   const isNearBottom = () => {
     const container = containerRef.current
@@ -43,55 +40,59 @@ export function MessageList({ initialMessages, channelId }: {
     if (!socket) return
 
     socket.on('message_received', (message: MessageWithAuthor) => {
-      // Only add message if it belongs to current channel
-      if (message.channelId === channelId) {
-        const wasAtBottom = isNearBottom()
-        setMessages(prev => {
-          const newMessages = [...prev, message]
-          if (wasAtBottom) {
-            setTimeout(() => {
-              if (containerRef.current) {
-                containerRef.current.scrollTop = containerRef.current.scrollHeight
-              }
-            }, 0)
-          }
-          return newMessages
-        })
-      }
+      const wasAtBottom = isNearBottom()
+      setMessages(prev => {
+        const newMessages = [...prev, message]
+        // Only scroll if we were at the bottom
+        if (wasAtBottom) {
+          // Force a scroll in the next tick
+          setTimeout(() => {
+            if (containerRef.current) {
+              containerRef.current.scrollTop = containerRef.current.scrollHeight
+            }
+          }, 0)
+        }
+        return newMessages
+      })
     })
 
     return () => {
       socket.off('message_received')
     }
-  }, [socket, channelId]) // Added channelId as dependency
+  }, [socket])
 
   return (
     <div 
       ref={containerRef}
-      style={{ height: 'calc(100vh - 200px)' }} // Fixed height
-      className="flex-1 p-4 space-y-4 overflow-y-auto"
+      style={{ height: 'calc(100vh - 200px)' }}
+      className="flex-1 p-6 space-y-4 overflow-y-auto bg-gray-50"
     >
       {messages.map((message) => (
-        <div key={message.id} className="flex items-start gap-2">
+        <div key={message.id} className="flex items-start gap-3 group hover:bg-gray-100 p-2 rounded-lg transition-colors">
           <div className="flex-shrink-0">
-            <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
+            <div className="w-10 h-10 bg-indigo-500 text-white rounded-full flex items-center justify-center font-medium shadow-sm">
               {message.author.name[0].toUpperCase()}
             </div>
           </div>
-          <div>
-            <div className="flex items-baseline gap-2">
-              <span className="font-semibold">{message.author.name}</span>
-              <span className="text-xs text-gray-500">
-                {new Date(message.createdAt).toLocaleTimeString()}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-gray-900">{message.author.name}</span>
+              <span className="text-xs text-gray-500 group-hover:opacity-100 opacity-0 transition-opacity">
+                {new Date(message.createdAt).toLocaleTimeString([], { 
+                  hour: '2-digit', 
+                  minute: '2-digit' 
+                })}
               </span>
             </div>
-            <p className="text-gray-700">{message.content}</p>
+            <p className="text-gray-700 break-words">{message.content}</p>
           </div>
         </div>
       ))}
       {!isConnected && (
-        <div className="text-center text-red-500">
-          Disconnected - trying to reconnect...
+        <div className="sticky bottom-0 text-center p-2 bg-red-50 rounded-lg border border-red-200">
+          <span className="text-red-600 font-medium">
+            Disconnected - trying to reconnect...
+          </span>
         </div>
       )}
     </div>
