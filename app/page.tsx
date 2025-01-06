@@ -5,6 +5,7 @@ import { MessageList } from "@/components/MessageList"
 import { MessageInput } from "@/components/MessageInput"
 import { prisma } from "@/lib/prisma"
 import { getMessages } from "@/components/MessageListServer"
+import { LogoutButton } from '@/components/LogoutButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -36,6 +37,9 @@ export default async function Home() {
 
     return (
       <div className="flex h-screen">
+        <div className="absolute top-4 right-4">
+          <LogoutButton />
+        </div>
         <aside className="w-64 bg-gray-800 text-white">
           <div className="p-4 border-b border-gray-700">
             <h1 className="text-xl font-bold">ChatGenius</h1>
