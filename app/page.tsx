@@ -4,6 +4,7 @@ import { ChannelList } from "@/components/ChannelList"
 import { MessageList } from "@/components/MessageList"
 import { MessageInput } from "@/components/MessageInput"
 import { prisma } from "@/lib/prisma"
+import { getMessages } from "@/components/MessageListServer"
 
 export default async function Home() {
   const cookieStore = await cookies()
@@ -27,6 +28,8 @@ export default async function Home() {
     })
   }
 
+  const initialMessages = await getMessages(generalChannel.id)
+
   return (
     <div className="flex h-screen">
       <aside className="w-64 bg-gray-800 text-white">
@@ -42,7 +45,7 @@ export default async function Home() {
         </header>
 
         <div className="flex-1 overflow-y-auto">
-          <MessageList channelId={generalChannel.id} />
+          <MessageList initialMessages={initialMessages} channelId={generalChannel.id} />
         </div>
 
         <MessageInput channelId={generalChannel.id} />

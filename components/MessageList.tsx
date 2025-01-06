@@ -1,28 +1,35 @@
 'use client'
 
-import { prisma } from "@/lib/prisma"
+import { useEffect, useState } from "react"
+
+type Message = {
+  id: string
+  content: string
+  createdAt: Date
+  author: {
+    name: string
+    email: string
+  }
+}
 
 type MessageListProps = {
+  initialMessages: Message[]
   channelId: string
 }
 
-export async function MessageList({ channelId }: MessageListProps) {
-  const messages = await prisma.message.findMany({
-    where: {
-      channelId,
-    },
-    include: {
-      author: {
-        select: {
-          name: true,
-          email: true,
-        },
-      },
-    },
-    orderBy: {
-      createdAt: 'asc',
-    },
-  })
+export function MessageList({ initialMessages, channelId }: MessageListProps) {
+  const [messages, setMessages] = useState<Message[]>(initialMessages)
+
+  // Poll for new messages every 3 seconds
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      const response = await fetch(`/api/messages?channelId=${channelId}`)
+      const newMessages = await response.json()
+      setMessages(newMessages)
+    }, 3000)
+
+    return () => clearInterval(interval)
+  }, [channelId])
 
   return (
     <div className="p-6 space-y-6">

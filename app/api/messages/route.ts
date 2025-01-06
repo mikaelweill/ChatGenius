@@ -3,6 +3,36 @@ import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { jwtVerify } from "jose"
 
+// GET handler for fetching messages
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url)
+  const channelId = searchParams.get('channelId')
+
+  if (!channelId) {
+    return NextResponse.json({ error: 'Channel ID required' }, { status: 400 })
+  }
+
+  const messages = await prisma.message.findMany({
+    where: {
+      channelId,
+    },
+    include: {
+      author: {
+        select: {
+          name: true,
+          email: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: 'asc',
+    },
+  })
+
+  return NextResponse.json(messages)
+}
+
+// POST handler for creating messages
 export async function POST(req: Request) {
   try {
     // Verify user is authenticated
@@ -32,7 +62,6 @@ export async function POST(req: Request) {
       include: {
         author: {
           select: {
-            id: true,
             name: true,
             email: true,
           },
