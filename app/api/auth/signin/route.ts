@@ -6,6 +6,7 @@ import { SignJWT } from "jose"
 export async function POST(req: Request) {
   try {
     const { email } = await req.json()
+    console.log('Signing in with email:', email)
 
     const user = await prisma.user.upsert({
       where: { email },
@@ -28,18 +29,18 @@ export async function POST(req: Request) {
       .setExpirationTime('24h')
       .sign(secret)
 
-    // Set cookie
-    const cookieStore = await cookies()
-    cookieStore.set('next-auth.session-token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+    // Set cookie with more permissive options for testing
+    const cookieStore = cookies()
+    cookieStore.set('session-token', token, {
+      httpOnly: false, // Allow JavaScript access for debugging
+      secure: false,   // Allow HTTP for local testing
       sameSite: 'lax',
       path: '/',
     })
 
     return NextResponse.json({ success: true, user })
   } catch (error) {
-    console.error('Error:', error)
+    console.error('Signin error:', error)
     return NextResponse.json(
       { error: 'Failed to process request' },
       { status: 500 }

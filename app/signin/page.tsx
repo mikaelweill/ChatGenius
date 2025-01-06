@@ -8,11 +8,13 @@ import { useRouter } from "next/navigation"
 export default function SignIn() {
   const [email, setEmail] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setError("")
 
     try {
       const res = await fetch('/api/auth/signin', {
@@ -21,13 +23,19 @@ export default function SignIn() {
         body: JSON.stringify({ email })
       })
 
+      const data = await res.json()
+
       if (res.ok) {
-        router.push('/') // or wherever you want to redirect
+        // Check if cookie was set
+        console.log('Cookies after signin:', document.cookie)
+        router.push('/')
+        router.refresh()
       } else {
-        throw new Error('Failed to sign in')
+        setError(data.error || 'Failed to sign in')
       }
     } catch (error) {
       console.error('Error:', error)
+      setError('An error occurred')
     } finally {
       setIsLoading(false)
     }
@@ -37,6 +45,7 @@ export default function SignIn() {
     <div className="flex min-h-screen items-center justify-center">
       <div className="w-full max-w-sm space-y-4 text-center">
         <h1 className="text-2xl font-bold">Welcome to ChatGenius</h1>
+        {error && <p className="text-red-500">{error}</p>}
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
             type="email"

@@ -1,45 +1,45 @@
 'use client'
 
-import { useEffect, useState } from "react"
+import { useEffect, useState } from 'react'
+import { useSocket } from '@/hooks/useSocket'
+import { Message } from '@prisma/client'
 
-type Message = {
-  id: string
-  content: string
-  createdAt: Date
+type MessageWithAuthor = Message & {
   author: {
     name: string
     email: string
   }
 }
 
-type MessageListProps = {
-  initialMessages: Message[]
-  channelId: string
-}
+export function MessageList({ channelId }: { channelId: string }) {
+  const [messages, setMessages] = useState<MessageWithAuthor[]>([])
+  const { socket, isConnected } = useSocket(channelId)
 
-export function MessageList({ initialMessages, channelId }: MessageListProps) {
-  const [messages, setMessages] = useState<Message[]>(initialMessages)
-
-  // Poll for new messages every 3 seconds
   useEffect(() => {
-    const interval = setInterval(async () => {
-      const response = await fetch(`/api/messages?channelId=${channelId}`)
-      const newMessages = await response.json()
-      setMessages(newMessages)
-    }, 3000)
+    if (!socket) return
 
-    return () => clearInterval(interval)
-  }, [channelId])
+    socket.on('message_received', (message: MessageWithAuthor) => {
+      setMessages(prev => [...prev, message])
+    })
+
+    return () => {
+      socket.off('message_received')
+    }
+  }, [socket])
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="flex-1 p-4 space-y-4 overflow-y-auto">
       {messages.map((message) => (
-        <div key={message.id} className="flex items-start space-x-4">
-          <div className="w-10 h-10 rounded-full bg-gray-300"></div>
+        <div key={message.id} className="flex items-start gap-2">
+          <div className="flex-shrink-0">
+            <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
+              {message.author.name[0].toUpperCase()}
+            </div>
+          </div>
           <div>
-            <div className="flex items-baseline space-x-2">
+            <div className="flex items-baseline gap-2">
               <span className="font-semibold">{message.author.name}</span>
-              <span className="text-sm text-gray-500">
+              <span className="text-xs text-gray-500">
                 {new Date(message.createdAt).toLocaleTimeString()}
               </span>
             </div>
@@ -47,6 +47,11 @@ export function MessageList({ initialMessages, channelId }: MessageListProps) {
           </div>
         </div>
       ))}
+      {!isConnected && (
+        <div className="text-center text-red-500">
+          Disconnected - trying to reconnect...
+        </div>
+      )}
     </div>
   )
 }
