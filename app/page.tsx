@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation"
 import { cookies } from "next/headers"
-import { ChannelList } from "@/components/ChannelList"
 import { MessageList } from "@/components/MessageList"
 import { MessageInput } from "@/components/MessageInput"
 import { prisma } from "@/lib/prisma"
