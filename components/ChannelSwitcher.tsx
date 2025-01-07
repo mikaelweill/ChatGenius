@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Channel } from '@prisma/client'
+import { DirectChat } from '@prisma/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Trash2, Plus } from 'lucide-react'
@@ -11,9 +12,10 @@ import { DirectMessagesList } from './DirectMessagesList'
 interface ChannelSwitcherProps {
   channels: Channel[]
   currentChannelId: string
+  directChats: DirectChat[]
 }
 
-export function ChannelSwitcher({ channels, currentChannelId }: ChannelSwitcherProps) {
+export function ChannelSwitcher({ channels, currentChannelId, directChats}: ChannelSwitcherProps) {
   const [isCreating, setIsCreating] = useState(false)
   const [newChannelName, setNewChannelName] = useState('')
   const { createChannel, deleteChannel } = useChannelSocket()
@@ -122,7 +124,7 @@ export function ChannelSwitcher({ channels, currentChannelId }: ChannelSwitcherP
 
       <div className="border-t border-gray-200" />
 
-      <DirectMessagesList />
+      <DirectMessagesList directChats = {directChats}/>
     </div>
   )
 } 

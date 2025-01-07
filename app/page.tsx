@@ -1,11 +1,17 @@
 import { redirect } from "next/navigation"
 import { cookies } from "next/headers"
+import { prisma } from "@/lib/prisma"
+import { ChannelSwitcher } from "@/components/ChannelSwitcher"
 import { MessageList } from "@/components/MessageList"
 import { MessageInput } from "@/components/MessageInput"
-import { prisma } from "@/lib/prisma"
 import { getMessages } from "@/components/MessageListServer"
 import { LogoutButton } from '@/components/LogoutButton'
-import { ChannelSwitcher } from "@/components/ChannelSwitcher"
+
+function decodeToken(token: string) {
+  const payload = token.split('.')[1]
+  const decodedPayload = Buffer.from(payload, 'base64').toString('utf-8')
+  return JSON.parse(decodedPayload)
+}
 
 export const dynamic = 'force-dynamic'
 
@@ -22,10 +28,51 @@ export default async function Home({
       redirect('/signin')
     }
 
+    // Decode token to get user ID
+    const decoded = decodeToken(token)
+
+    // Get current user
+    const currentUser = await prisma.user.findUnique({
+      where: { id: decoded.id }
+    })
+
+    if (!currentUser) {
+      redirect('/signin')
+    }
+
     // Get all channels
     const channels = await prisma.channel.findMany({
       orderBy: { createdAt: 'asc' }
     })
+
+    // Get all DMs for current user
+    const directChats = await prisma.directChat.findMany({
+      where: {
+        participants: {
+          some: {
+            id: currentUser.id
+          }
+        }
+      },
+      include: {
+        participants: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    })
+
+    // Map DMs to include other participant's info
+    const dms = directChats.map(chat => ({
+      ...chat,
+      otherUser: chat.participants.find(p => p.id !== currentUser.id)
+    }))
 
     // Get current channel from URL or fallback to general
     const currentChannel = searchParams.channel 
@@ -38,6 +85,8 @@ export default async function Home({
 
     const initialMessages = await getMessages(currentChannel.id)
 
+    console.log("CHANNELS:", channels)
+
     return (
       <div className="flex h-screen">
         <div className="absolute top-4 right-4">
@@ -49,7 +98,9 @@ export default async function Home({
           </div>
           <ChannelSwitcher 
             channels={channels}
-            currentChannelId={currentChannel.id}
+            directChats={dms}
+            currentUserId={currentUser.id}
+            currentChannelId={currentChannel?.id}
           />
         </aside>
 

@@ -70,18 +70,54 @@ app.prepare().then(() => {
       console.log(`Client ${socket.id} joined channel:`, channelId)
     })
 
+    // socket.on('new_message', async (data) => {
+    //   console.log('Message event received:', {
+    //     data,
+    //     socketId: socket.id,
+    //     userId: socket.data.userId
+    //   })
+      
+    //   try {
+    //     const savedMessage = await prisma.message.create({
+    //       data: {
+    //         content: data.content,
+    //         channelId: data.channelId,
+    //         authorId: socket.data.userId,
+    //       },
+    //       include: {
+    //         author: {
+    //           select: {
+    //             name: true,
+    //             email: true,
+    //           },
+    //         },
+    //       },
+    //     })
+
+    //     console.log('Message saved and broadcasting to channel:', {
+    //       messageId: savedMessage.id,
+    //       channelId: data.channelId
+    //     })
+
+    //     io.to(data.channelId).emit('message_received', savedMessage)
+    //   } catch (error) {
+    //     console.error('Error processing message:', error)
+    //   }
+    // })
+
     socket.on('new_message', async (data) => {
       console.log('Message event received:', {
         data,
         socketId: socket.id,
-        userId: socket.data.userId
-      })
-      
+        userId: socket.data.userId,
+      });
+    
       try {
         const savedMessage = await prisma.message.create({
           data: {
             content: data.content,
-            channelId: data.channelId,
+            channelId: data.channelId, // Optional: Will be null if not a channel message
+            directChatId: data.directChatId, // Optional: Will be null if not a direct chat message
             authorId: socket.data.userId,
           },
           include: {
@@ -92,18 +128,25 @@ app.prepare().then(() => {
               },
             },
           },
-        })
-
-        console.log('Message saved and broadcasting to channel:', {
+        });
+    
+        console.log('Message saved and broadcasting:', {
           messageId: savedMessage.id,
-          channelId: data.channelId
-        })
-
-        io.to(data.channelId).emit('message_received', savedMessage)
+          channelId: data.channelId,
+          directChatId: data.directChatId,
+        });
+    
+        // Broadcast to the correct room
+        if (data.channelId) {
+          io.to(data.channelId).emit('message_received', savedMessage);
+        } else if (data.directChatId) {
+          io.to(data.directChatId).emit('message_received', savedMessage);
+        }
       } catch (error) {
-        console.error('Error processing message:', error)
+        console.error('Error processing message:', error);
       }
-    })
+    });
+    
 
     socket.on('channel_create', async (data) => {
       console.log('Channel create event received:', {

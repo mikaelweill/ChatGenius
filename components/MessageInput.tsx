@@ -5,7 +5,7 @@ import { useSocket } from '@/hooks/useSocket'
 
 export function MessageInput({ channelId }: { channelId: string }) {
   const [content, setContent] = useState('')
-  const { sendMessage, isConnected } = useSocket(channelId)
+  const { sendMessage, isConnected } = useSocket({ channelId })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

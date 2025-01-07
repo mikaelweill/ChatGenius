@@ -43,56 +43,126 @@ const getSocket = () => {
 }
 
 // Message socket hook
-export function useSocket(channelId: string) {
-  const [isConnected, setIsConnected] = useState(false)
-  const socketRef = useRef<Socket>()
-  const currentChannelRef = useRef(channelId) // Track current channel
+// export function useSocket(channelId: string) {
+//   const [isConnected, setIsConnected] = useState(false)
+//   const socketRef = useRef<Socket>()
+//   const currentChannelRef = useRef(channelId) // Track current channel
+
+//   useEffect(() => {
+//     const socket = getSocket()
+//     if (!socket) return
+
+//     socketRef.current = socket
+//     currentChannelRef.current = channelId // Update current channel
+
+//     const handleConnect = () => {
+//       console.log('Socket connected with ID:', socket.id)
+//       setIsConnected(true)
+//       socket.emit('join_channel', channelId)
+//     }
+
+//     const handleMessage = (message: any) => {
+//       // Only handle messages for current channel
+//       if (message.channelId === currentChannelRef.current) {
+//         // Handle message
+//       }
+//     }
+
+//     if (socket.connected) {
+//       handleConnect()
+//     }
+
+//     socket.on('connect', handleConnect)
+//     socket.on('message_received', handleMessage)
+
+//     return () => {
+//       socket.off('connect', handleConnect)
+//       socket.off('message_received', handleMessage)
+//     }
+//   }, [channelId]) // Re-run effect when channel changes
+
+//   return {
+//     socket: socketRef.current,
+//     isConnected,
+//     sendMessage: (content: string) => {
+//       if (!socketRef.current?.connected) return
+//       socketRef.current.emit('new_message', {
+//         content,
+//         channelId,
+//       })
+//     }
+//   }
+// }
+
+export function useSocket(identifier: { channelId?: string; DmID?: string }) {
+  const [isConnected, setIsConnected] = useState(false);
+  const socketRef = useRef<Socket>();
+  const currentIdentifierRef = useRef(identifier); // Track current identifier (channel or DM)
 
   useEffect(() => {
-    const socket = getSocket()
-    if (!socket) return
+    const socket = getSocket();
+    if (!socket) return;
 
-    socketRef.current = socket
-    currentChannelRef.current = channelId // Update current channel
+    socketRef.current = socket;
+    currentIdentifierRef.current = identifier; // Update current identifier
+
+    console.log("Current identifier:", currentIdentifierRef.current);
 
     const handleConnect = () => {
-      console.log('Socket connected with ID:', socket.id)
-      setIsConnected(true)
-      socket.emit('join_channel', channelId)
-    }
+      console.log("Socket connected with ID:", socket.id);
+      setIsConnected(true);
+
+      if (identifier.channelId) {
+        socket.emit("join_channel", identifier.channelId);
+      } else if (identifier.DmID) {
+        socket.emit("join_dm", identifier.DmID);
+      }
+    };
 
     const handleMessage = (message: any) => {
-      // Only handle messages for current channel
-      if (message.channelId === currentChannelRef.current) {
-        // Handle message
+      // Handle messages based on the current identifier
+      if (
+        (identifier.channelId && message.channelId === currentIdentifierRef.current.channelId) ||
+        (identifier.DmID && message.DmID === currentIdentifierRef.current.DmID)
+      ) {
+        console.log("Message received:", message);
+        // Handle the message as required
       }
-    }
+    };
 
     if (socket.connected) {
-      handleConnect()
+      handleConnect();
     }
 
-    socket.on('connect', handleConnect)
-    socket.on('message_received', handleMessage)
+    socket.on("connect", handleConnect);
+    socket.on("message_received", handleMessage);
 
     return () => {
-      socket.off('connect', handleConnect)
-      socket.off('message_received', handleMessage)
-    }
-  }, [channelId]) // Re-run effect when channel changes
+      if (identifier.channelId) {
+        socket.emit("leave_channel", identifier.channelId);
+      } else if (identifier.DmID) {
+        socket.emit("leave_dm", identifier.DmID);
+      }
+      socket.off("connect", handleConnect);
+      socket.off("message_received", handleMessage);
+    };
+  }, [identifier]); // Re-run effect when identifier changes
 
   return {
     socket: socketRef.current,
     isConnected,
     sendMessage: (content: string) => {
-      if (!socketRef.current?.connected) return
-      socketRef.current.emit('new_message', {
-        content,
-        channelId,
-      })
-    }
-  }
+      if (!socketRef.current?.connected) return;
+
+      const payload: any = { content };
+      if (identifier.channelId) payload.channelId = identifier.channelId;
+      if (identifier.DmID) payload.DmID = identifier.DmID;
+
+      socketRef.current.emit("new_message", payload);
+    },
+  };
 }
+
 
 // Channel socket hook
 export function useChannelSocket() {
