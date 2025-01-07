@@ -5,6 +5,7 @@ import { Channel } from '@prisma/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Trash2 } from 'lucide-react'
+import { useChannelSocket } from '@/hooks/useSocket'
 
 interface ChannelSwitcherProps {
   channels: Channel[]
@@ -14,7 +15,7 @@ interface ChannelSwitcherProps {
 export function ChannelSwitcher({ channels, currentChannelId }: ChannelSwitcherProps) {
   const [isCreating, setIsCreating] = useState(false)
   const [newChannelName, setNewChannelName] = useState('')
-  const router = useRouter()
+  const { createChannel, deleteChannel } = useChannelSocket()
 
   const isDuplicateName = channels.some(
     channel => channel.name.toLowerCase() === newChannelName.toLowerCase()
@@ -24,38 +25,15 @@ export function ChannelSwitcher({ channels, currentChannelId }: ChannelSwitcherP
     e.preventDefault()
     if (!newChannelName.trim() || isDuplicateName) return
 
-    try {
-      const res = await fetch('/api/channels', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newChannelName }),
-      })
-
-      if (!res.ok) throw new Error('Failed to create channel')
-      
-      const channel = await res.json()
-      setNewChannelName('')
-      setIsCreating(false)
-      router.push(`/channels/${channel.name}`)
-      router.refresh()
-    } catch (error) {
-      console.error('Error creating channel:', error)
-    }
+    console.log('Attempting to create channel:', newChannelName)
+    createChannel(newChannelName)
+    setNewChannelName('')
+    setIsCreating(false)
   }
 
   const handleDeleteChannel = async (channelName: string) => {
-    try {
-      const res = await fetch(`/api/channels/${encodeURIComponent(channelName)}`, {
-        method: 'DELETE',
-      })
-
-      if (!res.ok) throw new Error('Failed to delete channel')
-      
-      router.push('/channels/general')
-      router.refresh()
-    } catch (error) {
-      console.error('Error deleting channel:', error)
-    }
+    console.log('Attempting to delete channel:', channelName)
+    deleteChannel(channelName)
   }
 
   return (
