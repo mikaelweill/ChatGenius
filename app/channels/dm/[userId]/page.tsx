@@ -7,16 +7,33 @@ import { ChannelSwitcher } from "@/components/ChannelSwitcher"
 import { MessageList } from "@/components/MessageList"
 import { MessageInput } from "@/components/MessageInput"
 
+function decodeToken(token: string) {
+  const payload = token.split('.')[1]
+  const decodedPayload = Buffer.from(payload, 'base64').toString('utf-8')
+  return JSON.parse(decodedPayload)
+}
+
 export default async function DMPage({ 
   params 
 }: { 
   params: { userId: string } 
 }) {
   try {
-    // Get all channels for the sidebar
-    const channels = await prisma.channel.findMany({
-      orderBy: { createdAt: 'asc' }
+    const cookieStore = await cookies()
+    const token = cookieStore.get('session-token')?.value
+
+    if (!token) {
+      redirect('/signin')
+    }
+
+    const decoded = decodeToken(token)
+    const currentUser = await prisma.user.findUnique({
+      where: { id: decoded.id }
     })
+
+    if (!currentUser) {
+      redirect('/signin')
+    }
 
     // Get both users
     const otherUser = await prisma.user.findUnique({
@@ -31,7 +48,7 @@ export default async function DMPage({
     let dmChat = await prisma.directChat.findFirst({
       where: {
         AND: [
-          { participants: { some: { id: params.userId } } },
+          { participants: { some: { id: currentUser.id } } },
           { participants: { some: { id: params.userId } } }
         ]
       },
@@ -41,11 +58,12 @@ export default async function DMPage({
     })
 
     if (!dmChat) {
-      // Create new DM chat
+      // Create new DM chat with both users
       dmChat = await prisma.directChat.create({
         data: {
           participants: {
             connect: [
+              { id: currentUser.id },
               { id: params.userId }
             ]
           }
@@ -55,6 +73,40 @@ export default async function DMPage({
         }
       })
     }
+
+    // Get all channels for the sidebar
+    const channels = await prisma.channel.findMany({
+      orderBy: { createdAt: 'asc' }
+    })
+
+    // Get all DMs for current user
+    const directChats = await prisma.directChat.findMany({
+      where: {
+        participants: {
+          some: {
+            id: currentUser.id
+          }
+        }
+      },
+      include: {
+        participants: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    })
+
+    // Map DMs to include other participant's info
+    const dms = directChats.map(chat => ({
+      ...chat,
+      otherUser: chat.participants.find(p => p.id !== currentUser.id)
+    }))
 
     const initialMessages = await getMessages(dmChat.id, true)
 
@@ -69,6 +121,8 @@ export default async function DMPage({
           </div>
           <ChannelSwitcher 
             channels={channels}
+            directChats={dms}
+            currentUserId={currentUser.id}
             currentChannelId={dmChat.id}
           />
         </aside>
@@ -82,6 +136,7 @@ export default async function DMPage({
             <MessageList 
               initialMessages={initialMessages} 
               channelId={dmChat.id}
+              currentUserId={currentUser.id}
               isDM={true}
             />
           </div>

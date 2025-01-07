@@ -70,82 +70,56 @@ app.prepare().then(() => {
       console.log(`Client ${socket.id} joined channel:`, channelId)
     })
 
-    // socket.on('new_message', async (data) => {
-    //   console.log('Message event received:', {
-    //     data,
-    //     socketId: socket.id,
-    //     userId: socket.data.userId
-    //   })
-      
-    //   try {
-    //     const savedMessage = await prisma.message.create({
-    //       data: {
-    //         content: data.content,
-    //         channelId: data.channelId,
-    //         authorId: socket.data.userId,
-    //       },
-    //       include: {
-    //         author: {
-    //           select: {
-    //             name: true,
-    //             email: true,
-    //           },
-    //         },
-    //       },
-    //     })
-
-    //     console.log('Message saved and broadcasting to channel:', {
-    //       messageId: savedMessage.id,
-    //       channelId: data.channelId
-    //     })
-
-    //     io.to(data.channelId).emit('message_received', savedMessage)
-    //   } catch (error) {
-    //     console.error('Error processing message:', error)
-    //   }
-    // })
-
     socket.on('new_message', async (data) => {
-      console.log('Message event received:', {
+      console.log('Message received:', {
         data,
         socketId: socket.id,
         userId: socket.data.userId,
-      });
-    
+        isDM: data.isDM
+      })
+      
       try {
+        // Create message data based on whether it's a DM or channel message
+        const messageData = {
+          content: data.content,
+          authorId: socket.data.userId,
+        }
+
+        // Add the correct chat ID field
+        if (data.isDM) {
+          messageData['directChatId'] = data.channelId
+        } else {
+          messageData['channelId'] = data.channelId
+        }
+
         const savedMessage = await prisma.message.create({
-          data: {
-            content: data.content,
-            channelId: data.channelId, // Optional: Will be null if not a channel message
-            directChatId: data.directChatId, // Optional: Will be null if not a direct chat message
-            authorId: socket.data.userId,
-          },
+          data: messageData,
           include: {
             author: {
               select: {
+                id: true,
                 name: true,
                 email: true,
               },
             },
           },
-        });
-    
-        console.log('Message saved and broadcasting:', {
-          messageId: savedMessage.id,
-          channelId: data.channelId,
-          directChatId: data.directChatId,
-        });
-    
-        // Broadcast to the correct room
-        if (data.channelId) {
-          io.to(data.channelId).emit('message_received', savedMessage);
-        } else if (data.directChatId) {
-          io.to(data.directChatId).emit('message_received', savedMessage);
-        }
+        })
+
+        // Join the room (whether channel or DM)
+        socket.join(data.channelId)
+        
+        // Emit to everyone in the room
+        io.to(data.channelId).emit('message_received', savedMessage)
+        
+        console.log('Message saved and emitted:', {
+          message: savedMessage,
+          isDM: data.isDM,
+          chatId: data.channelId
+        })
       } catch (error) {
-        console.error('Error processing message:', error);
+        console.error('Error processing message:', error)
       }
-    });
+    })
     
 
     socket.on('channel_create', async (data) => {

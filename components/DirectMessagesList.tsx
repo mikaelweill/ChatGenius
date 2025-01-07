@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { DirectChat, User } from '@prisma/client'
 
 type DirectChatWithParticipants = DirectChat & {
@@ -38,9 +39,14 @@ export function DirectMessagesList({
             }
             
             return (
-              <div key={chat.id} className="px-2 py-1 text-sm text-gray-300">
-                @ {chat.otherUser.name}
-              </div>
+              <Link
+                key={chat.id}
+                href={`/channels/dm/${chat.otherUser.id}`}
+                className="flex items-center px-2 py-1 text-sm text-gray-300 hover:bg-gray-700 rounded"
+              >
+                <span className="mr-1">@</span>
+                <span>{chat.otherUser.name}</span>
+              </Link>
             )
           })
         ) : (
