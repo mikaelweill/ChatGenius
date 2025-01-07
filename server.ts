@@ -79,17 +79,22 @@ app.prepare().then(() => {
       })
       
       try {
-        // Create message data based on whether it's a DM or channel message
-        const messageData = {
+        // Define the type for messageData
+        const messageData: {
+          content: string;
+          authorId: string;
+          directChatId?: string;
+          channelId?: string;
+        } = {
           content: data.content,
           authorId: socket.data.userId,
         }
 
         // Add the correct chat ID field
         if (data.isDM) {
-          messageData['directChatId'] = data.channelId
+          messageData.directChatId = data.channelId // Use dot notation instead of bracket notation
         } else {
-          messageData['channelId'] = data.channelId
+          messageData.channelId = data.channelId // Use dot notation instead of bracket notation
         }
 
         const savedMessage = await prisma.message.create({
