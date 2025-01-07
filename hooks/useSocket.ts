@@ -200,4 +200,55 @@ export function useChannelSocket() {
       console.log('Emitted channel_delete event')
     }
   }
+}
+
+// Keep all existing code and add this new hook
+export function useDMMessages(dmId: string) {
+  const [messages, setMessages] = useState<MessageWithAuthor[]>([])
+  const [isConnected, setIsConnected] = useState(false)
+  const socketRef = useRef<Socket>()
+  const currentDMRef = useRef(dmId)
+
+  useEffect(() => {
+    const socket = getSocket()
+    if (!socket) return
+
+    socketRef.current = socket
+    currentDMRef.current = dmId
+
+    const handleConnect = () => {
+      console.log('DM socket connected with ID:', socket.id)
+      setIsConnected(true)
+    }
+
+    const handleMessage = (message: MessageWithAuthor) => {
+      if (message.directChatId === currentDMRef.current) {
+        setMessages(prev => [...prev, message])
+      }
+    }
+
+    if (socket.connected) {
+      handleConnect()
+    }
+
+    socket.on('connect', handleConnect)
+    socket.on('dm_message_received', handleMessage)
+
+    return () => {
+      socket.off('connect', handleConnect)
+      socket.off('dm_message_received', handleMessage)
+    }
+  }, [dmId])
+
+  return {
+    messages,
+    isConnected,
+    sendMessage: (content: string) => {
+      if (!socketRef.current?.connected) return
+      socketRef.current.emit('new_dm_message', {
+        content,
+        chatId: dmId
+      })
+    }
+  }
 } 

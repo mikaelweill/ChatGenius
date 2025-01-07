@@ -170,6 +170,46 @@ app.prepare().then(() => {
       }
     })
 
+    socket.on('new_dm_message', async (data) => {
+      console.log('DM message received:', {
+        data,
+        socketId: socket.id,
+        userId: socket.data.userId
+      })
+      
+      try {
+        const savedMessage = await prisma.message.create({
+          data: {
+            content: data.content,
+            authorId: socket.data.userId,
+            directChatId: data.chatId
+          },
+          include: {
+            author: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+        })
+
+        // Get DM participants and emit to them
+        const chat = await prisma.directChat.findUnique({
+          where: { id: data.chatId },
+          include: { participants: true }
+        })
+        
+        chat?.participants.forEach(participant => {
+          io.to(participant.id).emit('dm_message_received', savedMessage)
+        })
+        console.log('Emitted DM message:', savedMessage)
+      } catch (error) {
+        console.error('Error processing DM message:', error)
+      }
+    })
+
     socket.on('disconnect', () => {
       console.log('Client disconnected, ID:', socket.id)
       userChannels.delete(socket.id)
