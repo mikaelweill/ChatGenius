@@ -8,6 +8,15 @@ import { Channel } from '@prisma/client'
 // Create a shared socket instance
 let sharedSocket: Socket | null = null
 
+// Add a function to clean up the socket
+export const cleanupSocket = () => {
+  if (sharedSocket) {
+    console.log('Cleaning up socket connection')
+    sharedSocket.disconnect()
+    sharedSocket = null
+  }
+}
+
 // Helper function to get or create socket
 const getSocket = () => {
   if (sharedSocket) return sharedSocket
