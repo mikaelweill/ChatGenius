@@ -57,16 +57,28 @@ export function ChannelSwitcher({ channels, currentChannelId }: ChannelSwitcherP
       {isCreating && (
         <form onSubmit={handleCreateChannel} className="px-4 space-y-2">
           <div className="relative">
-            <input
-              type="text"
-              value={newChannelName}
-              onChange={(e) => setNewChannelName(e.target.value)}
-              placeholder="New channel name"
-              className={`w-full px-3 py-2 text-sm bg-gray-700 text-white rounded border 
-                ${isDuplicateName ? 'border-red-500' : 'border-gray-600'}
-                focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-colors`}
-              autoFocus
-            />
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={newChannelName}
+                onChange={(e) => setNewChannelName(e.target.value)}
+                placeholder="New channel name"
+                className={`flex-1 px-3 py-2 text-sm bg-gray-700 text-white rounded border 
+                  ${isDuplicateName ? 'border-red-500' : 'border-gray-600'}
+                  focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-colors`}
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCreating(false)
+                  setNewChannelName('')
+                }}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                ✕
+              </button>
+            </div>
             {isDuplicateName && newChannelName && (
               <div className="absolute -bottom-6 left-0 text-sm text-red-400">
                 Channel name already exists
