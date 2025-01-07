@@ -43,14 +43,15 @@ export function ChannelSwitcher({ channels, currentChannelId }: ChannelSwitcherP
     }
   }
 
-  const handleDeleteChannel = async (channelId: string) => {
+  const handleDeleteChannel = async (channelName: string) => {
     try {
-      const res = await fetch(`/api/channels/${channelId}`, {
+      const res = await fetch(`/api/channels/${encodeURIComponent(channelName)}`, {
         method: 'DELETE',
       })
 
       if (!res.ok) throw new Error('Failed to delete channel')
       
+      router.push('/channels/general')
       router.refresh()
     } catch (error) {
       console.error('Error deleting channel:', error)
@@ -124,7 +125,7 @@ export function ChannelSwitcher({ channels, currentChannelId }: ChannelSwitcherP
             </Link>
             {channel.name !== 'general' && (
               <button
-                onClick={() => handleDeleteChannel(channel.id)}
+                onClick={() => handleDeleteChannel(channel.name)}
                 className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-400 transition-all"
                 aria-label={`Delete ${channel.name} channel`}
               >

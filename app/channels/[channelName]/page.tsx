@@ -12,27 +12,32 @@ export default async function ChannelPage({
 }: { 
   params: { channelName: string } 
 }) {
+  const cookieStore = await cookies()
+  const token = cookieStore.get('session-token')?.value
+
+  if (!token) {
+    redirect('/signin')
+  }
+
   try {
-    const cookieStore = await cookies()
-    const token = cookieStore.get('session-token')?.value
-
-    if (!token) {
-      redirect('/signin')
-    }
-
-    // Get all channels
+    // Get all channels first
     const channels = await prisma.channel.findMany({
       orderBy: { createdAt: 'asc' }
     })
 
-    // Get current channel by name
+    // Get the current channel
     const currentChannel = channels.find(c => c.name === params.channelName)
+
+    // If channel not found, redirect to general or first available channel
     if (!currentChannel) {
       const generalChannel = channels.find(c => c.name === 'general')
       if (generalChannel) {
         redirect('/channels/general')
+      } else if (channels.length > 0) {
+        redirect(`/channels/${channels[0].name}`)
+      } else {
+        redirect('/error')
       }
-      redirect('/error')
     }
 
     const initialMessages = await getMessages(currentChannel.id)
@@ -67,6 +72,6 @@ export default async function ChannelPage({
     )
   } catch (error) {
     console.error('Error in ChannelPage:', error)
-    redirect('/signin')
+    redirect('/error')
   }
 } 
