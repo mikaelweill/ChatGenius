@@ -4,72 +4,71 @@ const prisma = new PrismaClient()
 
 // Separate seeding functions for better organization
 async function seedDefaultChannel() {
-  const generalChannel = await prisma.channel.upsert({
-    where: { name: 'general' },
-    update: {},
+  const channel = await prisma.channel.upsert({
+    where: {
+      name: 'general'
+    },
+    update: {
+      description: 'General discussion channel'
+    },
     create: {
       name: 'general',
-      description: 'General discussion'
-    },
+      description: 'General discussion channel'
+    }
   })
-  
-  console.log('✓ Seeded general channel:', generalChannel.name)
-  return generalChannel
+  console.log('✓ Seeded general channel:', channel.name)
+  return channel
 }
 
 // Add more seed functions as needed
 async function seedDefaultUser() {
-  const adminUser = await prisma.user.upsert({
-    where: { email: 'admin@example.com' },
-    update: {},
+  const user = await prisma.user.upsert({
+    where: {
+      email: 'admin@example.com'
+    },
+    update: {
+      name: 'Admin',
+      status: 'online'
+    },
     create: {
       name: 'Admin',
       email: 'admin@example.com',
-    },
+      status: 'online'
+    }
   })
-  
-  console.log('✓ Seeded admin user:', adminUser.name)
-  return adminUser
+  console.log('✓ Seeded admin user:', user.name)
+  return user
 }
 
 // Main seeding function
 async function main() {
   console.log('🌱 Starting database seed...')
   
-  try {
-    // Sequential seeding for better control and error handling
-    const channel = await seedDefaultChannel()
-    const admin = await seedDefaultUser()
-    
-    // Connect admin to general channel
-    await prisma.channel.update({
-      where: { id: channel.id },
-      data: {
-        members: {
-          connect: { id: admin.id }
-        }
-      }
-    })
-    
-    console.log('✅ Database seeding completed')
-  } catch (error) {
-    console.error('❌ Error seeding database:', error)
-    throw error
-  }
+  // Create channel and user
+  const channel = await seedDefaultChannel()
+  const admin = await seedDefaultUser()
+
+  // Create or update the channel membership
+  await prisma.channelMembership.upsert({
+    where: {
+      id: `${admin.id}-${channel.id}`
+    },
+    update: {},
+    create: {
+      userId: admin.id,
+      channelId: channel.id
+    }
+  })
+
+  console.log('✓ Connected admin to general channel')
 }
 
 // Execute main function
 main()
   .catch((e) => {
-    console.error('❌ Fatal error during seeding:', e)
-    process.exit(1)
+    console.error('❌ Error seeding database:', e)
+    throw e
   })
   .finally(async () => {
-    // Ensure proper cleanup
-    try {
-      await prisma.$disconnect()
-    } catch (e) {
-      console.error('❌ Error disconnecting from database:', e)
-      process.exit(1)
-    }
+    await prisma.$disconnect()
   }) 
