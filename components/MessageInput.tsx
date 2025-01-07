@@ -3,16 +3,17 @@
 import { useState } from 'react'
 import { useSocket } from '@/hooks/useSocket'
 
-export function MessageInput({ channelId }: { channelId: string }) {
+export function MessageInput({ channelId, isDM = false }: { channelId: string, isDM?: boolean }) {
   const [content, setContent] = useState('')
-  const { sendMessage, isConnected } = useSocket({ channelId })
+  const { socket, isConnected } = useSocket({ channelId })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!content.trim() || !isConnected) return
 
     try {
-      sendMessage(content)
+      console.log('Sending message with isDM:', isDM)
+      socket.emit('new_message', { content, channelId, isDM })
       setContent('')
     } catch (error) {
       console.error('Error sending message:', error)
