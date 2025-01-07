@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { Channel } from '@prisma/client'
 import { DirectChat } from '@prisma/client'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Trash2, Plus } from 'lucide-react'
 import { useChannelSocket } from '@/hooks/useSocket'
