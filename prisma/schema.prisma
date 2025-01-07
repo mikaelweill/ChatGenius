@@ -16,7 +16,7 @@ model User {
   updatedAt     DateTime  @updatedAt
   
   messages      Message[]
-  channels      Channel[]
+  channelMemberships ChannelMembership[]
   directChats   DirectChat[]
   reactions     Reaction[]
 }
@@ -28,7 +28,7 @@ model Channel {
   createdAt     DateTime  @default(now())
   
   messages      Message[]
-  members       User[]
+  members       ChannelMembership[]
 }
 
 model DirectChat {
@@ -81,5 +81,13 @@ model Attachment {
   
   message       Message   @relation(fields: [messageId], references: [id])
   messageId     String
+}
+
+model ChannelMembership {
+  id            String    @id @default(cuid())
+  user          User      @relation(fields: [userId], references: [id])
+  userId        String
+  channel       Channel   @relation(fields: [channelId], references: [id])
+  channelId     String
 }
 
