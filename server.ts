@@ -44,9 +44,14 @@ app.prepare().then(() => {
   io.on('connection', async (socket) => {
     console.log('Client connected with ID:', socket.id)
 
-    // Log all incoming events for debugging
+    // Debug ALL incoming events
     socket.onAny((eventName, ...args) => {
-      console.log(`Received event "${eventName}"`, args)
+      console.log('Received socket event:', {
+        event: eventName,
+        args: args,
+        socketId: socket.id,
+        userId: socket.data?.userId
+      })
     })
 
     socket.on('join_channel', (channelId) => {
@@ -66,7 +71,12 @@ app.prepare().then(() => {
     })
 
     socket.on('new_message', async (data) => {
-      console.log('New message received:', data)
+      console.log('Message event received:', {
+        data,
+        socketId: socket.id,
+        userId: socket.data.userId
+      })
+      
       try {
         const savedMessage = await prisma.message.create({
           data: {
@@ -84,14 +94,23 @@ app.prepare().then(() => {
           },
         })
 
+        console.log('Message saved and broadcasting to channel:', {
+          messageId: savedMessage.id,
+          channelId: data.channelId
+        })
+
         io.to(data.channelId).emit('message_received', savedMessage)
       } catch (error) {
-        console.error('Error saving message:', error)
+        console.error('Error processing message:', error)
       }
     })
 
     socket.on('channel_create', async (data) => {
-      console.log('Channel create received:', data)
+      console.log('Channel create event received:', {
+        data,
+        socketId: socket.id,
+        userId: socket.data.userId
+      })
       try {
         const newChannel = await prisma.channel.create({
           data: {
@@ -110,11 +129,15 @@ app.prepare().then(() => {
       }
     })
 
-    socket.on('channel_delete', async (channelName) => {
-      console.log('Channel delete received:', channelName)
+    socket.on('channel_delete', async (channelId: string) => {
+      console.log('Channel delete event received:', {
+        channelId,
+        socketId: socket.id,
+        userId: socket.data.userId
+      })
       try {
         const channel = await prisma.channel.findUnique({
-          where: { name: channelName }
+          where: { id: channelId }
         })
 
         if (!channel) {
@@ -127,18 +150,18 @@ app.prepare().then(() => {
 
         await prisma.$transaction([
           prisma.message.deleteMany({
-            where: { channelId: channel.id }
+            where: { channelId }
           }),
           prisma.channelMembership.deleteMany({
-            where: { channelId: channel.id }
+            where: { channelId }
           }),
           prisma.channel.delete({
-            where: { id: channel.id }
+            where: { id: channelId }
           })
         ])
 
-        console.log('Successfully deleted channel:', channelName)
-        io.emit('channel_deleted', channelName)
+        console.log('Channel deleted from database:', channelId)
+        io.emit('channel_delete', channelId)
       } catch (error) {
         console.error('Error deleting channel:', error)
         socket.emit('channel_error', { 

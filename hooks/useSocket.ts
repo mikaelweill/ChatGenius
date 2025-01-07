@@ -125,8 +125,8 @@ export function useChannelSocket() {
       console.log('Channel created event received:', channel)
       router.refresh()
     })
-    socket.on('channel_deleted', (channelName: string) => {
-      console.log('Channel deleted event received:', channelName)
+    socket.on('channel_delete', (channelId: string) => {
+      console.log('Channel deleted event received:', channelId)
       router.push('/channels/general')
       router.refresh()
     })
@@ -143,8 +143,8 @@ export function useChannelSocket() {
         console.log('Channel created event received:', channel)
         router.refresh()
       })
-      socket.off('channel_deleted', (channelName: string) => {
-        console.log('Channel deleted event received:', channelName)
+      socket.off('channel_delete', (channelId: string) => {
+        console.log('Channel deleted event received:', channelId)
         router.push('/channels/general')
         router.refresh()
       })
@@ -157,20 +157,38 @@ export function useChannelSocket() {
   return {
     isConnected,
     createChannel: (name: string, description?: string) => {
-      if (!socketRef.current?.connected) {
-        console.error('Socket not connected when trying to create channel')
+      if (!socketRef.current) {
+        console.error('Socket ref is null')
         return
       }
-      console.log('Emitting channel_create event:', { name, description })
+      if (!socketRef.current.connected) {
+        console.error('Socket not connected, status:', socketRef.current.connected)
+        return
+      }
+      console.log('Socket status before create:', {
+        id: socketRef.current.id,
+        connected: socketRef.current.connected,
+        disconnected: socketRef.current.disconnected
+      })
       socketRef.current.emit('channel_create', { name, description })
     },
-    deleteChannel: (channelName: string) => {
-      if (!socketRef.current?.connected) {
-        console.error('Socket not connected when trying to delete channel')
+    deleteChannel: (channelId: string) => {
+      if (!socketRef.current) {
+        console.error('Socket ref is null')
         return
       }
-      console.log('Emitting channel_delete event:', channelName)
-      socketRef.current.emit('channel_delete', channelName)
+      if (!socketRef.current.connected) {
+        console.error('Socket not connected, status:', socketRef.current.connected)
+        return
+      }
+      console.log('Socket status before delete:', {
+        id: socketRef.current.id,
+        connected: socketRef.current.connected,
+        disconnected: socketRef.current.disconnected
+      })
+      console.log('About to emit channel_delete with channelId:', channelId)
+      socketRef.current.emit('channel_delete', channelId)
+      console.log('Emitted channel_delete event')
     }
   }
 } 

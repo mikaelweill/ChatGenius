@@ -31,9 +31,9 @@ export function ChannelSwitcher({ channels, currentChannelId }: ChannelSwitcherP
     setIsCreating(false)
   }
 
-  const handleDeleteChannel = async (channelName: string) => {
-    console.log('Attempting to delete channel:', channelName)
-    deleteChannel(channelName)
+  const handleDeleteChannel = async (channel: Channel) => {
+    console.log('Attempting to delete channel:', { id: channel.id, name: channel.name })
+    deleteChannel(channel.id)
   }
 
   return (
@@ -103,7 +103,7 @@ export function ChannelSwitcher({ channels, currentChannelId }: ChannelSwitcherP
             </Link>
             {channel.name !== 'general' && (
               <button
-                onClick={() => handleDeleteChannel(channel.name)}
+                onClick={() => handleDeleteChannel(channel)}
                 className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-400 transition-all"
                 aria-label={`Delete ${channel.name} channel`}
               >
