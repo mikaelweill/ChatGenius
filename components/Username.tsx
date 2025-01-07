@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 export function Username({ 
   userId, 
@@ -11,19 +11,16 @@ export function Username({
   name: string
   currentUserId: string 
 }) {
-  const router = useRouter()
-
-  const handleClick = () => {
-    if (userId === currentUserId) return
-    router.push(`/channels/dm/${userId}`)
+  if (userId === currentUserId) {
+    return <span className="text-gray-700">{name}</span>
   }
 
   return (
-    <span 
-      onClick={handleClick}
-      className="cursor-pointer hover:underline text-blue-600"
+    <Link
+      href={`/channels/dm/${userId}`}
+      className="text-blue-600 hover:underline"
     >
       {name}
-    </span>
+    </Link>
   )
 } 

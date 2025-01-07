@@ -10,55 +10,53 @@ import { MessageInput } from "@/components/MessageInput"
 export default async function DMPage({ 
   params 
 }: { 
-  params: { dmId: string } 
+  params: { userId: string } 
 }) {
-  const cookieStore = await cookies()
-  const token = cookieStore.get('session-token')?.value
-
-  if (!token) {
-    redirect('/signin')
-  }
-
   try {
-    // Get current user
-    const currentUser = await prisma.user.findFirst({
-      where: {
-        sessions: {
-          some: {
-            token
-          }
-        }
-      }
-    })
-
-    if (!currentUser) {
-      redirect('/signin')
-    }
-
     // Get all channels for the sidebar
     const channels = await prisma.channel.findMany({
       orderBy: { createdAt: 'asc' }
     })
 
-    // Get the current DM chat and other user
-    const currentDM = await prisma.directChat.findUnique({
-      where: { id: params.dmId },
+    // Get both users
+    const otherUser = await prisma.user.findUnique({
+      where: { id: params.userId }
+    })
+
+    if (!otherUser) {
+      redirect('/channels/general')
+    }
+
+    // Find or create DM chat
+    let dmChat = await prisma.directChat.findFirst({
+      where: {
+        AND: [
+          { participants: { some: { id: params.userId } } },
+          { participants: { some: { id: params.userId } } }
+        ]
+      },
       include: {
         participants: true
       }
     })
 
-    if (!currentDM) {
-      redirect('/channels/general')
+    if (!dmChat) {
+      // Create new DM chat
+      dmChat = await prisma.directChat.create({
+        data: {
+          participants: {
+            connect: [
+              { id: params.userId }
+            ]
+          }
+        },
+        include: {
+          participants: true
+        }
+      })
     }
 
-    // Find the other participant
-    const otherUser = currentDM.participants.find(p => p.id !== currentUser.id)
-    if (!otherUser) {
-      redirect('/channels/general')
-    }
-
-    const initialMessages = await getMessages(params.dmId, true)
+    const initialMessages = await getMessages(dmChat.id, true)
 
     return (
       <div className="flex h-screen">
@@ -71,7 +69,7 @@ export default async function DMPage({
           </div>
           <ChannelSwitcher 
             channels={channels}
-            currentChannelId={params.dmId}
+            currentChannelId={dmChat.id}
           />
         </aside>
 
@@ -83,13 +81,13 @@ export default async function DMPage({
           <div className="flex-1 overflow-y-auto">
             <MessageList 
               initialMessages={initialMessages} 
-              channelId={params.dmId}
-              currentUserId={currentUser.id}
+              channelId={dmChat.id}
+              isDM={true}
             />
           </div>
 
           <MessageInput 
-            channelId={params.dmId}
+            channelId={dmChat.id}
             isDM={true}
           />
         </main>
