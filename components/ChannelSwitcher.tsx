@@ -15,9 +15,13 @@ export function ChannelSwitcher({ channels, currentChannelId }: ChannelSwitcherP
   const [newChannelName, setNewChannelName] = useState('')
   const router = useRouter()
 
+  const isDuplicateName = channels.some(
+    channel => channel.name.toLowerCase() === newChannelName.toLowerCase()
+  )
+
   const handleCreateChannel = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newChannelName.trim()) return
+    if (!newChannelName.trim() || isDuplicateName) return
 
     try {
       const res = await fetch('/api/channels', {
@@ -51,15 +55,24 @@ export function ChannelSwitcher({ channels, currentChannelId }: ChannelSwitcherP
       </div>
 
       {isCreating && (
-        <form onSubmit={handleCreateChannel} className="px-4">
-          <input
-            type="text"
-            value={newChannelName}
-            onChange={(e) => setNewChannelName(e.target.value)}
-            placeholder="New channel name"
-            className="w-full px-3 py-2 text-sm bg-gray-700 text-white rounded border border-gray-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-colors"
-            autoFocus
-          />
+        <form onSubmit={handleCreateChannel} className="px-4 space-y-2">
+          <div className="relative">
+            <input
+              type="text"
+              value={newChannelName}
+              onChange={(e) => setNewChannelName(e.target.value)}
+              placeholder="New channel name"
+              className={`w-full px-3 py-2 text-sm bg-gray-700 text-white rounded border 
+                ${isDuplicateName ? 'border-red-500' : 'border-gray-600'}
+                focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-colors`}
+              autoFocus
+            />
+            {isDuplicateName && newChannelName && (
+              <div className="absolute -bottom-6 left-0 text-sm text-red-400">
+                Channel name already exists
+              </div>
+            )}
+          </div>
         </form>
       )}
 
