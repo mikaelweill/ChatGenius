@@ -42,6 +42,12 @@ const getSocket = () => {
   return sharedSocket
 }
 
+
+// Utility to emit socket events from the server or client
+export const emitSocketEvent = async (event: string, data: any) => {
+  // This will be implemented in a separate server-side file
+  return Promise.resolve();
+};
 // Message socket hook
 // export function useSocket(channelId: string) {
 //   const [isConnected, setIsConnected] = useState(false)

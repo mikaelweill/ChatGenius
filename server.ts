@@ -4,6 +4,7 @@ import next from 'next'
 import { Server } from 'socket.io'
 import { jwtVerify } from 'jose'
 import { prisma } from './lib/prisma'
+import { initializeSocket } from './lib/serverSocket'
 
 const dev = process.env.NODE_ENV !== 'production'
 const app = next({ dev })
@@ -25,6 +26,9 @@ app.prepare().then(() => {
     }
   })
 
+  // Initialize the server socket
+  initializeSocket(io)
+
   io.use(async (socket, next) => {
     const token = socket.handshake.auth.token
     if (!token) {
@@ -42,7 +46,6 @@ app.prepare().then(() => {
   })
 
   io.on('connection', async (socket) => {
-    console.log('Client connected with ID:', socket.id)
 
     // Debug ALL incoming events
     socket.onAny((eventName, ...args) => {
@@ -192,6 +195,46 @@ app.prepare().then(() => {
       }
     })
 
+    socket.on("user_signup", async (data) => {
+      console.log("New user signup event received:", data);
+    
+      try {
+        // Fetch all existing users except the new user
+        const existingUsers = await prisma.user.findMany({
+          where: { id: { not: data.userId } },
+          select: { id: true },
+        });
+    
+        // Create DMs with all existing users
+        const createDMs = existingUsers.map((existingUser) =>
+          prisma.directChat.create({
+            data: {
+              participants: {
+                connect: [
+                  { id: data.userId },
+                  { id: existingUser.id },
+                ],
+              },
+            },
+          })
+        );
+    
+        await Promise.all(createDMs);
+    
+        console.log(
+          `DMs created between new user ${data.userId} and existing users`
+        );
+    
+        // Notify connected clients about new DMs
+        existingUsers.forEach((existingUser) => {
+          io.to(existingUser.id).emit("dm_created", { newUserId: data.userId });
+        });
+      } catch (error) {
+        console.error("Error creating DMs for new user:", error);
+      }
+    });
+    
+
     socket.on('new_dm_message', async (data) => {
       console.log('DM message received:', {
         data,
@@ -233,7 +276,6 @@ app.prepare().then(() => {
     })
 
     socket.on('disconnect', () => {
-      console.log('Client disconnected, ID:', socket.id)
       userChannels.delete(socket.id)
     })
   })
