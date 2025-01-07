@@ -251,4 +251,40 @@ export function useDMMessages(dmId: string) {
       })
     }
   }
+}
+
+// Add this new hook
+export function useDMSocket() {
+  const [isConnected, setIsConnected] = useState(false)
+  const socketRef = useRef<Socket>()
+
+  useEffect(() => {
+    const socket = getSocket()
+    if (!socket) return
+
+    socketRef.current = socket
+
+    const handleConnect = () => {
+      setIsConnected(true)
+    }
+
+    if (socket.connected) {
+      handleConnect()
+    }
+
+    socket.on('connect', handleConnect)
+
+    return () => {
+      socket.off('connect', handleConnect)
+    }
+  }, [])
+
+  return {
+    createDM: (otherUserId: string, callback: (response: { chatId?: string, error?: string }) => void) => {
+      if (!socketRef.current?.connected) return
+      
+      socketRef.current.emit('create_dm', { otherUserId }, callback)
+    },
+    isConnected
+  }
 } 

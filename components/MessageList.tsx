@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useSocket } from '@/hooks/useSocket'
 import { Message } from '@prisma/client'
+import { Username } from './Username'
 
 type MessageWithAuthor = Message & {
   author: {
@@ -14,9 +15,10 @@ type MessageWithAuthor = Message & {
 interface MessageListProps {
   initialMessages: MessageWithAuthor[]
   channelId: string
+  currentUserId: string
 }
 
-export function MessageList({ initialMessages, channelId }: MessageListProps) {
+export function MessageList({ initialMessages, channelId, currentUserId }: MessageListProps) {
   const [messages, setMessages] = useState<MessageWithAuthor[]>(initialMessages)
   const { socket, isConnected } = useSocket(channelId)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -76,7 +78,11 @@ export function MessageList({ initialMessages, channelId }: MessageListProps) {
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-gray-900">{message.author.name}</span>
+              <Username 
+                userId={message.authorId}
+                name={message.author.name}
+                currentUserId={currentUserId}
+              />
               <span className="text-xs text-gray-500 group-hover:opacity-100 opacity-0 transition-opacity">
                 {new Date(message.createdAt).toLocaleTimeString([], { 
                   hour: '2-digit', 

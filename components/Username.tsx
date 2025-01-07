@@ -1,7 +1,6 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useDMSocket } from '@/hooks/useSocket'
 
 export function Username({ 
   userId, 
@@ -13,14 +12,10 @@ export function Username({
   currentUserId: string 
 }) {
   const router = useRouter()
-  const { createDM } = useDMSocket()
 
   const handleClick = () => {
     if (userId === currentUserId) return
-
-    createDM(userId, (chatId) => {
-      router.push(`/?dm=${chatId}`)
-    })
+    router.push(`/channels/dm/${userId}`)
   }
 
   return (
