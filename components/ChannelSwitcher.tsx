@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Channel } from '@prisma/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { Trash2 } from 'lucide-react'
 
 interface ChannelSwitcherProps {
   channels: Channel[]
@@ -39,6 +40,20 @@ export function ChannelSwitcher({ channels, currentChannelId }: ChannelSwitcherP
       router.refresh()
     } catch (error) {
       console.error('Error creating channel:', error)
+    }
+  }
+
+  const handleDeleteChannel = async (channelId: string) => {
+    try {
+      const res = await fetch(`/api/channels/${channelId}`, {
+        method: 'DELETE',
+      })
+
+      if (!res.ok) throw new Error('Failed to delete channel')
+      
+      router.refresh()
+    } catch (error) {
+      console.error('Error deleting channel:', error)
     }
   }
 
@@ -90,20 +105,33 @@ export function ChannelSwitcher({ channels, currentChannelId }: ChannelSwitcherP
 
       <div className="space-y-0.5">
         {channels.map((channel) => (
-          <Link
+          <div
             key={channel.id}
-            href={`/channels/${channel.name}`}
-            className={`block w-full px-4 py-2 text-left transition-colors ${
+            className={`group flex items-center justify-between px-4 py-2 ${
               channel.id === currentChannelId 
                 ? 'bg-gray-700 text-white' 
                 : 'text-gray-300 hover:bg-gray-700 hover:text-white'
             }`}
           >
-            <span className="flex items-center gap-2">
-              <span className="text-gray-400">#</span>
-              {channel.name}
-            </span>
-          </Link>
+            <Link
+              href={`/channels/${channel.name}`}
+              className="flex-1"
+            >
+              <span className="flex items-center gap-2">
+                <span className="text-gray-400">#</span>
+                {channel.name}
+              </span>
+            </Link>
+            {channel.name !== 'general' && (
+              <button
+                onClick={() => handleDeleteChannel(channel.id)}
+                className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-400 transition-all"
+                aria-label={`Delete ${channel.name} channel`}
+              >
+                <Trash2 size={16} />
+              </button>
+            )}
+          </div>
         ))}
       </div>
     </div>
