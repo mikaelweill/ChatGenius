@@ -20,10 +20,44 @@ export default async function ChannelPage({
   }
 
   try {
-    // Get all channels first
+    // Decode token to get user ID
+    const payload = token.split('.')[1]
+    const decodedPayload = Buffer.from(payload, 'base64').toString('utf-8')
+    const { id: userId } = JSON.parse(decodedPayload)
+
+    // Get all channels
     const channels = await prisma.channel.findMany({
       orderBy: { createdAt: 'asc' }
     })
+
+    // Get all DMs for current user
+    const directChats = await prisma.directChat.findMany({
+      where: {
+        participants: {
+          some: {
+            id: userId
+          }
+        }
+      },
+      include: {
+        participants: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    })
+
+    // Map DMs to include other participant's info
+    const dms = directChats.map(chat => ({
+      ...chat,
+      otherUser: chat.participants.find(p => p.id !== userId)
+    }))
 
     // Get the current channel
     const currentChannel = channels.find(c => c.name === params.channelName)
@@ -53,6 +87,8 @@ export default async function ChannelPage({
           </div>
           <ChannelSwitcher 
             channels={channels}
+            directChats={dms}
+            currentUserId={userId}
             currentChannelId={currentChannel.id}
           />
         </aside>
