@@ -11,8 +11,18 @@ export async function getMessages(chatId: string, isDM: boolean = false) {
           id: true,
           name: true,
           email: true,
-        },
+        }
       },
+      reactions: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true
+            }
+          }
+        }
+      }
     },
     orderBy: {
       createdAt: 'asc',
