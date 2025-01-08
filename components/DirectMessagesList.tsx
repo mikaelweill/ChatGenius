@@ -1,7 +1,9 @@
 'use client'
 
+import { useEffect } from 'react'
 import Link from 'next/link'
-import { DirectChat, User } from '@prisma/client'
+import { useRouter } from 'next/navigation'
+import type { DirectChat } from '@prisma/client'
 
 type DirectChatWithParticipants = DirectChat & {
   participants: {
@@ -21,6 +23,17 @@ export function DirectMessagesList({
 }: {
   directChats: DirectChatWithParticipants[]
 }) {
+  const router = useRouter()
+
+  useEffect(() => {
+    // Refresh the page periodically to check for new DMs
+    const interval = setInterval(() => {
+      router.refresh()
+    }, 5000)  // every 5 seconds
+
+    return () => clearInterval(interval)
+  }, [router])
+
   console.log('DirectMessagesList received:', directChats)
 
   return (

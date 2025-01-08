@@ -85,8 +85,6 @@ export default async function Home({
 
     const initialMessages = await getMessages(currentChannel.id)
 
-    console.log("CHANNELS:", channels)
-
     return (
       <div className="flex h-screen">
         <div className="absolute top-4 right-4">
