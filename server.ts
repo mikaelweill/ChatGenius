@@ -4,7 +4,6 @@ import next from 'next'
 import { Server } from 'socket.io'
 import { jwtVerify } from 'jose'
 import { prisma } from './lib/prisma'
-import { initializeSocket } from './lib/serverSocket'
 
 const dev = process.env.NODE_ENV !== 'production'
 const app = next({ dev })
@@ -25,9 +24,6 @@ app.prepare().then(() => {
       credentials: true
     }
   })
-
-  // Initialize the server socket
-  initializeSocket(io)
 
   io.use(async (socket, next) => {
     const token = socket.handshake.auth.token
