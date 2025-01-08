@@ -18,6 +18,11 @@ type DirectChatWithParticipants = DirectChat & {
   }
 }
 
+interface DirectMessagesListProps {
+  directChats: DirectChat[]
+  currentUserId: string
+}
+
 export function DirectMessagesList({
   directChats
 }: {

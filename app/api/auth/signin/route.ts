@@ -60,7 +60,7 @@ export async function POST(req: Request) {
       .sign(secret)
 
     // Set cookie
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
     await cookieStore.set("session-token", token, {
       httpOnly: false,
       secure: false,

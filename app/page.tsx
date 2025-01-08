@@ -18,8 +18,10 @@ export const dynamic = 'force-dynamic'
 export default async function Home({
   searchParams
 }: {
-  searchParams: { channel?: string }
+  searchParams: Promise<{ channel?: string }>
 }) {
+  const resolvedParams = await searchParams;
+  const { channel } = resolvedParams;
   try {
     const cookieStore = await cookies()
     const token = cookieStore.get('session-token')?.value
@@ -75,8 +77,8 @@ export default async function Home({
     }))
 
     // Get current channel from URL or fallback to general
-    const currentChannel = searchParams.channel 
-      ? channels.find(c => c.id === searchParams.channel)
+    const currentChannel = channel 
+      ? channels.find(c => c.id === channel)
       : channels.find(c => c.name === 'general') || channels[0]
 
     if (!currentChannel) {

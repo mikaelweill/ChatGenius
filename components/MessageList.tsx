@@ -1,14 +1,16 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useContext } from 'react'
 import { useSocket } from '@/hooks/useSocket'
 import { Message } from '@prisma/client'
 import { Username } from './Username'
+import { SessionContext } from '@/components/SessionProvider'
 
 type MessageWithAuthor = Message & {
   author: {
-    name: string
-    email: true
+    name: string | null;
+    id: string;
+    email: string | null;
   }
 }
 
@@ -20,8 +22,9 @@ interface MessageListProps {
 
 export function MessageList({ initialMessages, channelId, currentUserId }: MessageListProps) {
   const [messages, setMessages] = useState<MessageWithAuthor[]>(initialMessages)
-  const { socket, isConnected } = useSocket(channelId)
+  const { socket, isConnected } = useSocket({ channelId })
   const containerRef = useRef<HTMLDivElement>(null)
+  const session = useContext(SessionContext)
 
   const isNearBottom = () => {
     const container = containerRef.current
@@ -63,17 +66,15 @@ export function MessageList({ initialMessages, channelId, currentUserId }: Messa
     }
   }, [socket])
 
+
+
   return (
-    <div 
-      ref={containerRef}
-      style={{ height: 'calc(100vh - 200px)' }}
-      className="flex-1 p-6 space-y-4 overflow-y-auto bg-gray-50"
-    >
+    <div key={channelId} className="space-y-4 p-4">
       {messages.map((message) => (
         <div key={message.id} className="flex items-start gap-3 group hover:bg-gray-100 p-2 rounded-lg transition-colors">
           <div className="flex-shrink-0">
             <div className="w-10 h-10 bg-indigo-500 text-white rounded-full flex items-center justify-center font-medium shadow-sm">
-              {message.author.name[0].toUpperCase()}
+              {message.author.name?.[0].toUpperCase() || 'A'}
             </div>
           </div>
           <div className="flex-1 min-w-0">

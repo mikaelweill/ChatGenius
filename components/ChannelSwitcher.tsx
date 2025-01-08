@@ -12,9 +12,10 @@ interface ChannelSwitcherProps {
   channels: Channel[]
   currentChannelId: string
   directChats: DirectChat[]
+  currentUserId: string
 }
 
-export function ChannelSwitcher({ channels, currentChannelId, directChats}: ChannelSwitcherProps) {
+export function ChannelSwitcher({ channels, currentChannelId, directChats, currentUserId }: ChannelSwitcherProps) {
   const [isCreating, setIsCreating] = useState(false)
   const [newChannelName, setNewChannelName] = useState('')
   const { createChannel, deleteChannel } = useChannelSocket()
@@ -123,7 +124,10 @@ export function ChannelSwitcher({ channels, currentChannelId, directChats}: Chan
 
       <div className="border-t border-gray-200" />
 
-      <DirectMessagesList directChats = {directChats}/>
+      <DirectMessagesList 
+        directChats={directChats}
+        currentUserId={currentUserId}
+      />
     </div>
   )
 } 

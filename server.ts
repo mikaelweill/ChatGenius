@@ -4,6 +4,7 @@ import next from 'next'
 import { Server } from 'socket.io'
 import { jwtVerify } from 'jose'
 import { prisma } from './lib/prisma'
+import path from 'path'
 
 const dev = process.env.NODE_ENV !== 'production'
 const app = next({ dev })
@@ -12,9 +13,29 @@ const handle = app.getRequestHandler()
 const userChannels = new Map<string, string>(); // socketId -> channelId
 
 app.prepare().then(() => {
-  const server = createServer((req, res) => {
-    const parsedUrl = parse(req.url!, true)
-    handle(req, res, parsedUrl)
+  const server = createServer(async (req, res) => {
+    try {
+      // Handle static files
+      const parsedUrl = parse(req.url!, true)
+      const { pathname } = parsedUrl
+
+      // Handle Next.js static files and assets
+      if (
+        pathname?.startsWith('/_next/') || 
+        pathname?.startsWith('/static/') ||
+        pathname?.includes('.') // Handle files with extensions
+      ) {
+        await handle(req, res, parsedUrl)
+        return
+      }
+
+      // Handle all other routes
+      await handle(req, res, parsedUrl)
+    } catch (err) {
+      console.error('Error occurred handling request:', err)
+      res.statusCode = 500
+      res.end('Internal Server Error')
+    }
   })
 
   const io = new Server(server, {

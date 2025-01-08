@@ -13,11 +13,13 @@ function decodeToken(token: string) {
   return JSON.parse(decodedPayload)
 }
 
-export default async function DMPage({ 
-  params 
-}: { 
-  params: { userId: string } 
-}) {
+interface DMPageProps {
+  params: Promise<{ userId: string }>
+}
+
+export default async function DMPage({ params }: DMPageProps) {
+  const resolvedParams = await params;
+  const { userId } = resolvedParams;
   try {
     const cookieStore = await cookies()
     const token = cookieStore.get('session-token')?.value
@@ -37,7 +39,7 @@ export default async function DMPage({
 
     // Get both users
     const otherUser = await prisma.user.findUnique({
-      where: { id: params.userId }
+      where: { id: userId }
     })
 
     if (!otherUser) {
@@ -49,7 +51,7 @@ export default async function DMPage({
       where: {
         AND: [
           { participants: { some: { id: currentUser.id } } },
-          { participants: { some: { id: params.userId } } }
+          { participants: { some: { id: userId } } }
         ]
       },
       include: {
@@ -64,7 +66,7 @@ export default async function DMPage({
           participants: {
             connect: [
               { id: currentUser.id },
-              { id: params.userId }
+              { id: userId }
             ]
           }
         },

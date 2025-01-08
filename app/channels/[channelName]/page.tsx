@@ -8,10 +8,12 @@ import { MessageList } from "@/components/MessageList"
 import { MessageInput } from "@/components/MessageInput"
 
 interface ChannelPageProps {
-  params: { channelName: string }
+  params: Promise<{ channelName: string }>
 }
 
 export default async function ChannelPage({ params }: ChannelPageProps) {
+  const resolvedParams = await params;
+  const { channelName } = resolvedParams;
   const cookieStore = await cookies()
   const token = cookieStore.get('session-token')?.value
 
@@ -60,7 +62,7 @@ export default async function ChannelPage({ params }: ChannelPageProps) {
     }))
 
     // Get the current channel
-    const currentChannel = channels.find(c => c.name === params.channelName)
+    const currentChannel = channels.find(c => c.name === channelName)
 
     // If channel not found, redirect to general or first available channel
     if (!currentChannel) {

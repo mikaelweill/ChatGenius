@@ -3,6 +3,28 @@ import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { SignJWT } from "jose"
 
+export async function getSession() {
+  const cookieStore = await cookies()
+  const token = cookieStore.get('session-token')?.value
+
+  if (!token) {
+    return null
+  }
+
+  // Decode token
+  const payload = token.split('.')[1]
+  const decodedPayload = Buffer.from(payload, 'base64').toString('utf-8')
+  const session = JSON.parse(decodedPayload)
+
+  return {
+    user: {
+      id: session.id,
+      name: session.name,
+      email: session.email
+    }
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const { email } = await req.json()
