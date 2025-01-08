@@ -5,8 +5,9 @@
   "scripts": {
     "dev": "ts-node --project tsconfig.server.json server.ts",
     "build": "next build",
-    "start": "NODE_ENV=production ts-node --project tsconfig.server.json server.ts",
-    "studio": "prisma studio"
+    "start": "NODE_ENV=production npm run build && ts-node --project tsconfig.server.json server.ts",
+    "studio": "prisma studio",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@auth/core": "^0.37.4",
