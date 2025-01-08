@@ -136,12 +136,22 @@ export function useSocket(identifier: { channelId?: string; DmID?: string }) {
       }
     };
 
+    const handleReactionAdded = ({ messageId, reaction }: any) => {
+      console.log("Reaction added:", { messageId, reaction })
+    }
+
+    const handleReactionRemoved = ({ messageId, reactionId }: any) => {
+      console.log("Reaction removed:", { messageId, reactionId })
+    }
+
     if (socket.connected) {
       handleConnect();
     }
 
     socket.on("connect", handleConnect);
     socket.on("message_received", handleMessage);
+    socket.on("reaction_added", handleReactionAdded);
+    socket.on("reaction_removed", handleReactionRemoved);
 
     return () => {
       if (identifier.channelId) {
@@ -151,6 +161,8 @@ export function useSocket(identifier: { channelId?: string; DmID?: string }) {
       }
       socket.off("connect", handleConnect);
       socket.off("message_received", handleMessage);
+      socket.off("reaction_added", handleReactionAdded);
+      socket.off("reaction_removed", handleReactionRemoved);
     };
   }, [identifier]); // Re-run effect when identifier changes
 
@@ -166,6 +178,14 @@ export function useSocket(identifier: { channelId?: string; DmID?: string }) {
 
       socketRef.current.emit("new_message", payload);
     },
+    addReaction: (messageId: string, emoji: string) => {
+      if (!socketRef.current?.connected) return;
+      socketRef.current.emit("add_reaction", {
+        messageId,
+        emoji,
+        channelId: identifier.channelId
+      });
+    }
   };
 }
 

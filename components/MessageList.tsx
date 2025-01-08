@@ -2,29 +2,36 @@
 
 import { useEffect, useState, useRef, useContext } from 'react'
 import { useSocket } from '@/hooks/useSocket'
-import { Message } from '@prisma/client'
+import { Message, Reaction } from '@prisma/client'
 import { Username } from './Username'
 import { SessionContext } from '@/components/SessionProvider'
+import { Smile } from 'lucide-react'
 
-type MessageWithAuthor = Message & {
+type MessageWithAuthorAndReactions = Message & {
   author: {
     name: string | null;
     id: string;
     email: string | null;
   }
+  reactions: (Reaction & {
+    user: {
+      name: string | null;
+    }
+  })[]
 }
 
 interface MessageListProps {
-  initialMessages: MessageWithAuthor[]
+  initialMessages: MessageWithAuthorAndReactions[]
   channelId: string
   currentUserId: string
 }
 
 export function MessageList({ initialMessages, channelId, currentUserId }: MessageListProps) {
-  const [messages, setMessages] = useState<MessageWithAuthor[]>(initialMessages)
+  const [messages, setMessages] = useState<MessageWithAuthorAndReactions[]>(initialMessages)
   const { socket, isConnected } = useSocket({ channelId })
   const containerRef = useRef<HTMLDivElement>(null)
   const session = useContext(SessionContext)
+  const [showEmojiPicker, setShowEmojiPicker] = useState<string | null>(null)
 
   const isNearBottom = () => {
     const container = containerRef.current
@@ -44,7 +51,7 @@ export function MessageList({ initialMessages, channelId, currentUserId }: Messa
   useEffect(() => {
     if (!socket) return
 
-    socket.on('message_received', (message: MessageWithAuthor) => {
+    socket.on('message_received', (message: MessageWithAuthorAndReactions) => {
       const wasAtBottom = isNearBottom()
       setMessages(prev => {
         const newMessages = [...prev, message]
@@ -66,7 +73,47 @@ export function MessageList({ initialMessages, channelId, currentUserId }: Messa
     }
   }, [socket])
 
+  useEffect(() => {
+    if (!socket) return
 
+    socket.on('reaction_added', ({ messageId, reaction }) => {
+      setMessages(prev => prev.map(message => {
+        if (message.id === messageId) {
+          return {
+            ...message,
+            reactions: [...(message.reactions || []), reaction]
+          }
+        }
+        return message
+      }))
+    })
+
+    socket.on('reaction_removed', ({ messageId, reactionId }) => {
+      setMessages(prev => prev.map(message => {
+        if (message.id === messageId) {
+          return {
+            ...message,
+            reactions: (message.reactions || []).filter(r => r.id !== reactionId)
+          }
+        }
+        return message
+      }))
+    })
+
+    return () => {
+      socket.off('reaction_added')
+      socket.off('reaction_removed')
+    }
+  }, [socket])
+
+  const handleReaction = (messageId: string, emoji: string) => {
+    socket.emit('add_reaction', {
+      messageId,
+      emoji,
+      channelId
+    })
+    setShowEmojiPicker(null)
+  }
 
   return (
     <div key={channelId} className="space-y-4 p-4">
@@ -92,6 +139,57 @@ export function MessageList({ initialMessages, channelId, currentUserId }: Messa
               </span>
             </div>
             <p className="text-gray-700 break-words">{message.content}</p>
+            
+            <div className="flex flex-wrap gap-2 mt-2">
+              {Object.entries(
+                (message.reactions || []).reduce((acc, reaction) => {
+                  // Group reactions by emoji
+                  if (!acc[reaction.emoji]) {
+                    acc[reaction.emoji] = {
+                      count: 0,
+                      users: [],
+                      userIds: []
+                    }
+                  }
+                  acc[reaction.emoji].count++
+                  acc[reaction.emoji].users.push(reaction.user.name)
+                  acc[reaction.emoji].userIds.push(reaction.user.id)
+                  return acc
+                }, {} as Record<string, { count: number, users: string[], userIds: string[] }>)
+              ).map(([emoji, data]) => (
+                <button
+                  key={emoji}
+                  onClick={() => handleReaction(message.id, emoji)}
+                  className={`bg-gray-100 rounded-full px-2 py-1 text-sm hover:bg-gray-200 ${
+                    data.userIds.includes(currentUserId) ? 'border-2 border-blue-400' : ''
+                  }`}
+                  title={`${data.users.join(', ')} reacted with ${emoji}`}
+                >
+                  {emoji} {data.count > 1 && data.count}
+                </button>
+              ))}
+              
+              <button
+                onClick={() => setShowEmojiPicker(message.id)}
+                className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-600"
+              >
+                <Smile size={16} />
+              </button>
+            </div>
+
+            {showEmojiPicker === message.id && (
+              <div className="absolute mt-2 bg-white shadow-lg rounded-lg p-2">
+                {["👍", "❤️", "😂", "😮", "😢", "👏"].map(emoji => (
+                  <button
+                    key={emoji}
+                    onClick={() => handleReaction(message.id, emoji)}
+                    className="p-1 hover:bg-gray-100 rounded"
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       ))}

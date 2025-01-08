@@ -292,6 +292,55 @@ app.prepare().then(() => {
       }
     })
 
+    socket.on('add_reaction', async ({ messageId, emoji, channelId }) => {
+      try {
+        // Check if THIS user already reacted with this emoji
+        const existingReaction = await prisma.reaction.findFirst({
+          where: {
+            messageId,
+            userId: socket.data.userId,
+            emoji
+          }
+        })
+
+        if (existingReaction) {
+          // Only remove THIS user's reaction
+          await prisma.reaction.delete({
+            where: { id: existingReaction.id }
+          })
+
+          io.to(channelId).emit('reaction_removed', {
+            messageId,
+            reactionId: existingReaction.id
+          })
+        } else {
+          // Add new reaction (multiple users can add same emoji)
+          const reaction = await prisma.reaction.create({
+            data: {
+              emoji,
+              userId: socket.data.userId,
+              messageId
+            },
+            include: {
+              user: {
+                select: {
+                  id: true,  // Add this to identify who reacted
+                  name: true
+                }
+              }
+            }
+          })
+
+          io.to(channelId).emit('reaction_added', {
+            messageId,
+            reaction
+          })
+        }
+      } catch (error) {
+        console.error('Error handling reaction:', error)
+      }
+    })
+
     socket.on('disconnect', () => {
       userChannels.delete(socket.id)
     })
