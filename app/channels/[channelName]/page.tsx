@@ -7,11 +7,11 @@ import { ChannelSwitcher } from "@/components/ChannelSwitcher"
 import { MessageList } from "@/components/MessageList"
 import { MessageInput } from "@/components/MessageInput"
 
-export default async function ChannelPage({ 
-  params 
-}: { 
-  params: { channelName: string } 
-}) {
+interface ChannelPageProps {
+  params: { channelName: string }
+}
+
+export default async function ChannelPage({ params }: ChannelPageProps) {
   const cookieStore = await cookies()
   const token = cookieStore.get('session-token')?.value
 
