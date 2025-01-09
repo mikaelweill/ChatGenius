@@ -47,6 +47,12 @@ export async function POST(req: Request) {
       )
     }
 
+    // Update user status to online
+    user = await prisma.user.update({
+      where: { id: user.id },
+      data: { status: 'online' }
+    })
+
     // Create JWT token
     const secret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET)
     const token = await new SignJWT({
