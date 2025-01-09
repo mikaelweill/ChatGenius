@@ -18,25 +18,30 @@ export const cleanupSocket = () => {
 }
 
 // Helper function to get or create socket
-const getSocket = () => {
+const getSocket = (userId: string) => {
   if (sharedSocket) return sharedSocket
 
-  const cookies = document.cookie
-  const token = cookies
-    .split('; ')
-    .find(row => row.startsWith('session-token='))
-    ?.split('=')[1]
-
-  if (!token) {
-    console.error('No auth token found in cookies')
-    window.location.href = '/signin'
-    return null
-  }
+  console.log('Creating socket with exact userId value:', {
+    userId,
+    type: typeof userId,
+    length: userId.length
+  })
 
   sharedSocket = io({
-    auth: { token },
+    auth: { userId },
     reconnectionAttempts: 5,
     reconnectionDelay: 1000,
+    transports: ['websocket', 'polling'],
+    timeout: 10000,
+    forceNew: true
+  })
+
+  sharedSocket.on('connect_error', (error) => {
+    console.log('Socket connect error:', {
+      message: error.message,
+      data: error.data,
+      description: error.description
+    })
   })
 
   return sharedSocket
@@ -100,13 +105,13 @@ export const emitSocketEvent = async (event: string, data: any) => {
 //   }
 // }
 
-export function useSocket(identifier: { channelId?: string; DmID?: string }) {
+export function useSocket(identifier: { channelId?: string; DmID?: string }, userId: string) {
   const [isConnected, setIsConnected] = useState(false);
   const socketRef = useRef<Socket>();
   const currentIdentifierRef = useRef(identifier); // Track current identifier (channel or DM)
 
   useEffect(() => {
-    const socket = getSocket();
+    const socket = getSocket(userId);
     if (!socket) return;
 
     socketRef.current = socket;
@@ -191,17 +196,14 @@ export function useSocket(identifier: { channelId?: string; DmID?: string }) {
 
 
 // Channel socket hook
-export function useChannelSocket() {
+export function useChannelSocket(userId: string) {
   const [isConnected, setIsConnected] = useState(false)
   const socketRef = useRef<Socket>()
   const router = useRouter()
 
   useEffect(() => {
-    const socket = getSocket()
-    if (!socket) {
-      console.error('Failed to get socket connection')
-      return
-    }
+    const socket = getSocket(userId)
+    if (!socket) return
 
     socketRef.current = socket
 
@@ -257,7 +259,7 @@ export function useChannelSocket() {
         console.error('Channel operation failed:', error.message)
       })
     }
-  }, [router])
+  }, [router, userId])
 
   return {
     isConnected,

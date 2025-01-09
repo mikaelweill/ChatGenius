@@ -28,7 +28,7 @@ interface MessageListProps {
 
 export function MessageList({ initialMessages, channelId, currentUserId }: MessageListProps) {
   const [messages, setMessages] = useState<MessageWithAuthorAndReactions[]>(initialMessages)
-  const { socket, isConnected } = useSocket({ channelId })
+  const { socket, isConnected } = useSocket({ channelId }, currentUserId)
   const containerRef = useRef<HTMLDivElement>(null)
   const session = useContext(SessionContext)
   const [showEmojiPicker, setShowEmojiPicker] = useState<string | null>(null)

@@ -1,29 +1,28 @@
-import { prisma } from "@/lib/prisma"
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from "next/headers"
+import { prisma } from "@/lib/prisma"
 
 export async function POST() {
   try {
-    const cookieStore = await cookies()
-    const token = cookieStore.get('session-token')?.value
+    const cookieStore = cookies()
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
 
-    if (token) {
-      const payload = token.split('.')[1]
-      const decodedPayload = Buffer.from(payload, 'base64').toString('utf-8')
-      const { id: userId } = JSON.parse(decodedPayload)
+    // Get the current session
+    const { data: { session } } = await supabase.auth.getSession()
+    const userId = session?.user?.id
 
-      // Here's where we update status to offline
+    if (userId) {
+      // Update user status to offline
       await prisma.user.update({
         where: { id: userId },
         data: { status: 'offline' }
       })
     }
 
-    return new Response(null, {
-      status: 200,
-      headers: {
-        'Set-Cookie': 'session-token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT'
-      }
-    })
+    // Sign out using Supabase
+    await supabase.auth.signOut()
+
+    return new Response(null, { status: 200 })
   } catch (error) {
     console.error('Error during logout:', error)
     return new Response(null, { status: 500 })

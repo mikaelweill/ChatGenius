@@ -18,7 +18,7 @@ interface ChannelSwitcherProps {
 export function ChannelSwitcher({ channels, currentChannelId, directChats, currentUserId }: ChannelSwitcherProps) {
   const [isCreating, setIsCreating] = useState(false)
   const [newChannelName, setNewChannelName] = useState('')
-  const { createChannel, deleteChannel } = useChannelSocket()
+  const { isConnected, createChannel, deleteChannel } = useChannelSocket(currentUserId)
 
   const isDuplicateName = channels.some(
     channel => channel.name.toLowerCase() === newChannelName.toLowerCase()

@@ -10,11 +10,13 @@ type DirectChatWithParticipants = DirectChat & {
     id: string
     name: string
     email: string
+    status: string
   }[]
   otherUser: {
     id: string
     name: string
     email: string
+    status: string
   }
 }
 

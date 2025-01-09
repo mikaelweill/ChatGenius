@@ -12,6 +12,12 @@ const handle = app.getRequestHandler()
 
 const userChannels = new Map<string, string>(); // socketId -> channelId
 
+prisma.user.findFirst().then(user => {
+  console.log('Prisma connection test:', !!user);
+}).catch(err => {
+  console.error('Prisma connection error:', err);
+});
+
 app.prepare().then(() => {
   const server = createServer(async (req, res) => {
     try {
@@ -47,18 +53,41 @@ app.prepare().then(() => {
   })
 
   io.use(async (socket, next) => {
-    const token = socket.handshake.auth.token
-    if (!token) {
-      return next(new Error('Authentication error'))
+    console.log('=== Socket Auth Debug ===');
+    console.log('1. Raw handshake:', {
+      auth: socket.handshake.auth,
+      query: socket.handshake.query,
+      headers: socket.handshake.headers
+    });
+
+    const userId = socket.handshake.auth.userId;
+    console.log('2. Extracted userId:', userId);
+
+    if (!userId) {
+      console.log('3a. Failed: No userId provided');
+      return next(new Error('Authentication error'));
     }
 
     try {
-      const secret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET)
-      const { payload } = await jwtVerify(token, secret)
-      socket.data.userId = payload.id
-      next()
+      console.log('3b. Looking up user in database:', userId);
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, email: true }  // Just for logging
+      });
+
+      console.log('4. Database lookup result:', user);
+
+      if (!user) {
+        console.log('5a. Failed: User not found in database');
+        return next(new Error('Authentication error'));
+      }
+
+      socket.data.userId = userId;
+      console.log('5b. Success: User authenticated:', { userId, socketId: socket.id });
+      next();
     } catch (error) {
-      next(new Error('Authentication error'))
+      console.error('5c. Failed: Database error:', error);
+      next(new Error('Authentication error'));
     }
   })
 

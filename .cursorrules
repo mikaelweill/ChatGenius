@@ -1,0 +1,9 @@
+When asked a question always follow this template:
+1. give me your best guess
+2. keep it concise
+3. provide the minimal code changes
+4. take it step by steps (baby steps)
+
+NEVER SUGGEST A MIDDLEWARE -- 
+Also do not delete code when you do not need to. Try to make the edits proposed
+as concise and close to the goal as possible.
