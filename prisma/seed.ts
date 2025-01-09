@@ -21,6 +21,7 @@ async function seedDefaultChannel() {
 }
 
 // Add more seed functions as needed
+/*
 async function seedDefaultUser() {
   const user = await prisma.user.upsert({
     where: {
@@ -39,16 +40,17 @@ async function seedDefaultUser() {
   console.log('✓ Seeded admin user:', user.name)
   return user
 }
+*/
 
-// Main seeding function
 async function main() {
   console.log('🌱 Starting database seed...')
   
-  // Create channel and user
+  // Create channel
   const channel = await seedDefaultChannel()
+  
+  /*
+  // Create admin user and membership
   const admin = await seedDefaultUser()
-
-  // Create or update the channel membership
   await prisma.channelMembership.upsert({
     where: {
       id: `${admin.id}-${channel.id}`
@@ -59,11 +61,10 @@ async function main() {
       channelId: channel.id
     }
   })
-
   console.log('✓ Connected admin to general channel')
+  */
 }
 
-// Execute main function
 main()
   .catch((e) => {
     console.error('❌ Error seeding database:', e)
