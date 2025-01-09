@@ -54,11 +54,17 @@ export default function SignIn() {
 
     const newCode = code.split('')
     newCode[index] = value
-    setCode(newCode.join(''))
+    const updatedCode = newCode.join('')
+    setCode(updatedCode)
 
     // Auto-focus next input
     if (value && index < 5) {
       codeInputs.current[index + 1]?.focus()
+    }
+
+    // Auto-submit when code is complete (all 6 digits entered)
+    if (index === 5 && value && updatedCode.length === 6) {
+      handleVerifyCode(new Event('submit') as any)
     }
   }
 
