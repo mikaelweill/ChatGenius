@@ -8,6 +8,20 @@ import { getMessages } from "@/components/MessageListServer"
 import { LogoutButton } from '@/components/LogoutButton'
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 
+async function createUserIfNeeded(user: User) {
+  const response = await fetch('/api/auth/signin', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      email: user.email,
+      code: 'VERIFIED' // Special flag to indicate user is already verified
+    })
+  })
+  return response.json()
+}
+
 function decodeToken(token: string) {
   const payload = token.split('.')[1]
   const decodedPayload = Buffer.from(payload, 'base64').toString('utf-8')

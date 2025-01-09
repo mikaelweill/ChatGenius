@@ -94,14 +94,14 @@ app.prepare().then(() => {
   io.on('connection', async (socket) => {
 
     // Debug ALL incoming events
-    socket.onAny((eventName, ...args) => {
-      console.log('Received socket event:', {
-        event: eventName,
-        args: args,
-        socketId: socket.id,
-        userId: socket.data?.userId
-      })
-    })
+    // socket.onAny((eventName, ...args) => {
+    //   console.log('Received socket event:', {
+    //     event: eventName,
+    //     args: args,
+    //     socketId: socket.id,
+    //     userId: socket.data?.userId
+    //   })
+    // })
 
     socket.on('join_channel', (channelId) => {
       const previousChannel = userChannels.get(socket.id)
@@ -196,11 +196,11 @@ app.prepare().then(() => {
     })
 
     socket.on('channel_delete', async (channelId: string) => {
-      console.log('Channel delete event received:', {
-        channelId,
-        socketId: socket.id,
-        userId: socket.data.userId
-      })
+      // console.log('Channel delete event received:', {
+      //   channelId,
+      //   socketId: socket.id,
+      //   userId: socket.data.userId
+      // })
       try {
         // Check if it's the general channel
         const channel = await prisma.channel.findUnique({

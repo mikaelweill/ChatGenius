@@ -83,17 +83,31 @@ export default function SignIn() {
         return
       }
 
+      // Create user in Prisma after successful verification
+      const response = await fetch('/api/auth/signin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          email,
+          code: 'VERIFIED'
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to create user')
+      }
+
+      // Store user ID and redirect
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user?.id) {
+        TokenManager.setUserId(user.id)
+      }
+
       // Use window.location for hard refresh
       window.location.href = '/'
 
-      const handleSignIn = async () => {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user?.id) {
-          TokenManager.setUserId(user.id)  // Store userId when user logs in
-        }
-      }
-
     } catch (error) {
+      console.error('Verification error:', error)
       setError("Failed to verify code")
     } finally {
       setIsLoading(false)

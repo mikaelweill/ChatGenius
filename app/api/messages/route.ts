@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from "next/headers"
-import { jwtVerify } from "jose"
 
 // GET handler for fetching messages
 export async function GET(req: Request) {
@@ -35,45 +35,55 @@ export async function GET(req: Request) {
 // POST handler for creating messages
 export async function POST(req: Request) {
   try {
-    // Verify user is authenticated
-    const cookieStore = await cookies()
-    const token = cookieStore.get('next-auth.session-token')
-
-    if (!token) {
+    const cookieStore = cookies()
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+    
+    // Get authenticated user
+    const { data: { user }, error } = await supabase.auth.getUser()
+    if (error || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Verify JWT
-    const secret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET)
-    const { payload } = await jwtVerify(token.value, secret)
-
-    if (!payload.id) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
-    }
-
-    const { content, channelId } = await req.json()
-
-    const message = await prisma.message.create({
-      data: {
-        content,
-        channelId,
-        authorId: payload.id as string,
-      },
-      include: {
-        author: {
-          select: {
-            name: true,
-            email: true,
-          },
-        },
-      },
+    // Check if this is first time user (no DMs yet)
+    const existingDMs = await prisma.directChat.findFirst({
+      where: {
+        participants: {
+          some: { id: user.id }
+        }
+      }
     })
 
-    return NextResponse.json(message)
+    if (!existingDMs) {
+      // Get all existing users except the new user
+      const existingUsers = await prisma.user.findMany({
+        where: { 
+          id: { not: user.id } 
+        },
+        select: { id: true }
+      })
+
+      // Create DMs with all existing users
+      await Promise.all(
+        existingUsers.map(existingUser => 
+          prisma.directChat.create({
+            data: {
+              participants: {
+                connect: [
+                  { id: user.id },
+                  { id: existingUser.id }
+                ]
+              }
+            }
+          })
+        )
+      )
+    }
+
+    return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error:', error)
+    console.error("Error:", error)
     return NextResponse.json(
-      { error: 'Failed to send message' },
+      { error: "Failed to process request" },
       { status: 500 }
     )
   }
