@@ -178,6 +178,7 @@ app.prepare().then(() => {
         userId: socket.data.userId
       })
       try {
+        // Check if it's the general channel
         const channel = await prisma.channel.findUnique({
           where: { id: channelId }
         })
@@ -190,19 +191,31 @@ app.prepare().then(() => {
           throw new Error('Cannot delete the general channel')
         }
 
+        // Use transaction to ensure all operations complete or none do
         await prisma.$transaction([
-          prisma.message.deleteMany({
-            where: { channelId }
+          // 1. Delete reactions first (due to foreign key constraint)
+          prisma.reaction.deleteMany({
+            where: {
+              message: {
+                channelId
+              }
+            }
           }),
+          // 2. Delete channel memberships
           prisma.channelMembership.deleteMany({
             where: { channelId }
           }),
+          // 3. Delete messages
+          prisma.message.deleteMany({
+            where: { channelId }
+          }),
+          // 4. Delete the channel
           prisma.channel.delete({
             where: { id: channelId }
           })
         ])
 
-        console.log('Channel deleted from database:', channelId)
+        // Keep original event name
         io.emit('channel_delete', channelId)
       } catch (error) {
         console.error('Error deleting channel:', error)
