@@ -47,7 +47,7 @@ export default async function Home({
       orderBy: { createdAt: 'asc' }
     })
 
-    // Get all DMs for current user
+    // Get all DMs for current user with participant status
     const directChats = await prisma.directChat.findMany({
       where: {
         participants: {
@@ -61,7 +61,8 @@ export default async function Home({
           select: {
             id: true,
             name: true,
-            email: true
+            email: true,
+            status: true
           }
         }
       },
