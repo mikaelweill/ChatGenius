@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { ActivityTracker } from '@/components/ActivityTracker'
 import { SessionProvider } from '@/components/SessionProvider'
+import { AuthProvider } from '@/contexts/AuthContext'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -19,8 +20,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        {children}
-        {/* Temporarily remove ActivityTracker */}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   )

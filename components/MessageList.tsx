@@ -28,7 +28,7 @@ interface MessageListProps {
 
 export function MessageList({ initialMessages, channelId, currentUserId }: MessageListProps) {
   const [messages, setMessages] = useState<MessageWithAuthorAndReactions[]>(initialMessages)
-  const { socket, isConnected } = useSocket({ channelId }, currentUserId)
+  const { socket, isConnected } = useSocket({ channelId })
   const containerRef = useRef<HTMLDivElement>(null)
   const session = useContext(SessionContext)
   const [showEmojiPicker, setShowEmojiPicker] = useState<string | null>(null)
@@ -129,7 +129,6 @@ export function MessageList({ initialMessages, channelId, currentUserId }: Messa
               <Username 
                 userId={message.authorId}
                 name={message.author.name}
-                currentUserId={currentUserId}
               />
               <span className="text-xs text-gray-500 group-hover:opacity-100 opacity-0 transition-opacity">
                 {new Date(message.createdAt).toLocaleTimeString([], { 

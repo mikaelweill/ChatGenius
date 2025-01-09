@@ -104,19 +104,14 @@ app.prepare().then(() => {
     })
 
     socket.on('join_channel', (channelId) => {
-      // console.log(`Client ${socket.id} joining channel:`, channelId)
-      
-      // Leave previous channel if any
       const previousChannel = userChannels.get(socket.id)
       if (previousChannel) {
         socket.leave(previousChannel)
-        // console.log(`Client ${socket.id} left channel:`, previousChannel)
+        userChannels.delete(socket.id)
       }
       
-      // Join new channel
       socket.join(channelId)
       userChannels.set(socket.id, channelId)
-      // console.log(`Client ${socket.id} joined channel:`, channelId)
     })
 
     socket.on('new_message', async (data) => {

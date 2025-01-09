@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useRouter } from "next/navigation"
 import { createBrowserClient } from '@/lib/supabase'
+import { TokenManager } from '@/lib/tokenManager'
 
 export default function SignIn() {
   const [email, setEmail] = useState("")
@@ -84,6 +85,13 @@ export default function SignIn() {
 
       // Use window.location for hard refresh
       window.location.href = '/'
+
+      const handleSignIn = async () => {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user?.id) {
+          TokenManager.setUserId(user.id)  // Store userId when user logs in
+        }
+      }
 
     } catch (error) {
       setError("Failed to verify code")

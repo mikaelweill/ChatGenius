@@ -6,33 +6,40 @@ import { getMessages } from "@/components/MessageListServer"
 import { ChannelSwitcher } from "@/components/ChannelSwitcher"
 import { MessageList } from "@/components/MessageList"
 import { MessageInput } from "@/components/MessageInput"
+import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 
 interface ChannelPageProps {
   params: Promise<{ channelName: string }>
 }
 
 export default async function ChannelPage({ params }: ChannelPageProps) {
-  const resolvedParams = await params;
-  const { channelName } = resolvedParams;
   const cookieStore = await cookies()
-  const token = cookieStore.get('session-token')?.value
+  const supabase = createServerComponentClient({ cookies: () => cookieStore })
+  
+  const { data: { user }, error } = await supabase.auth.getUser()
 
-  if (!token) {
+  if (error || !user) {
     redirect('/signin')
   }
 
-  try {
-    // Decode token to get user ID
-    const payload = token.split('.')[1]
-    const decodedPayload = Buffer.from(payload, 'base64').toString('utf-8')
-    const { id: userId } = JSON.parse(decodedPayload)
+  const userId = user.id
 
+  const resolvedParams = await params;
+  const { channelName } = resolvedParams;
+
+  try {
     // Get all channels
     const channels = await prisma.channel.findMany({
       orderBy: { createdAt: 'asc' }
     })
 
-    // Get all DMs for current user
+    // Get the current channel
+    const currentChannel = channels.find(c => c.name === channelName)
+    if (!currentChannel) {
+      redirect('/channels/general')
+    }
+
+    // Get all DMs for current user using socket userId
     const directChats = await prisma.directChat.findMany({
       where: {
         participants: {
@@ -55,26 +62,11 @@ export default async function ChannelPage({ params }: ChannelPageProps) {
       }
     })
 
-    // Map DMs to include other participant's info
+    // Map DMs with socket userId
     const dms = directChats.map(chat => ({
       ...chat,
       otherUser: chat.participants.find(p => p.id !== userId)
     }))
-
-    // Get the current channel
-    const currentChannel = channels.find(c => c.name === channelName)
-
-    // If channel not found, redirect to general or first available channel
-    if (!currentChannel) {
-      const generalChannel = channels.find(c => c.name === 'general')
-      if (generalChannel) {
-        redirect('/channels/general')
-      } else if (channels.length > 0) {
-        redirect(`/channels/${channels[0].name}`)
-      } else {
-        redirect('/error')
-      }
-    }
 
     const initialMessages = await getMessages(currentChannel.id)
 
@@ -90,8 +82,8 @@ export default async function ChannelPage({ params }: ChannelPageProps) {
           <ChannelSwitcher 
             channels={channels}
             directChats={dms}
-            currentUserId={userId}
             currentChannelId={currentChannel.id}
+            currentUserId={userId}
           />
         </aside>
 

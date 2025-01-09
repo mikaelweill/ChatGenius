@@ -4,14 +4,15 @@ import { useEffect, useRef, useState } from 'react'
 import { io, Socket } from 'socket.io-client'
 import { useRouter } from 'next/navigation'
 import { Channel } from '@prisma/client'
+import { TokenManager } from '@/lib/tokenManager'
 
 // Create a shared socket instance
 let sharedSocket: Socket | null = null
 
-// Add a function to clean up the socket
+// Keep cleanup only for logout
 export const cleanupSocket = () => {
   if (sharedSocket) {
-    console.log('Cleaning up socket connection')
+    console.log('Cleaning up socket connection on logout')
     sharedSocket.disconnect()
     sharedSocket = null
   }
@@ -105,12 +106,19 @@ export const emitSocketEvent = async (event: string, data: any) => {
 //   }
 // }
 
-export function useSocket(identifier: { channelId?: string; DmID?: string }, userId: string) {
+export function useSocket(identifier: { channelId?: string; DmID?: string }) {
   const [isConnected, setIsConnected] = useState(false);
   const socketRef = useRef<Socket>();
   const currentIdentifierRef = useRef(identifier); // Track current identifier (channel or DM)
 
   useEffect(() => {
+    // Get userId from storage instead of props
+    const userId = TokenManager.getUserId();
+    if (!userId) {
+      console.log('No userId available');
+      return;
+    }
+
     const socket = getSocket(userId);
     if (!socket) return;
 
@@ -159,11 +167,6 @@ export function useSocket(identifier: { channelId?: string; DmID?: string }, use
     socket.on("reaction_removed", handleReactionRemoved);
 
     return () => {
-      if (identifier.channelId) {
-        socket.emit("leave_channel", identifier.channelId);
-      } else if (identifier.DmID) {
-        socket.emit("leave_dm", identifier.DmID);
-      }
       socket.off("connect", handleConnect);
       socket.off("message_received", handleMessage);
       socket.off("reaction_added", handleReactionAdded);
@@ -196,12 +199,18 @@ export function useSocket(identifier: { channelId?: string; DmID?: string }, use
 
 
 // Channel socket hook
-export function useChannelSocket(userId: string) {
+export function useChannelSocket() {
   const [isConnected, setIsConnected] = useState(false)
   const socketRef = useRef<Socket>()
   const router = useRouter()
 
   useEffect(() => {
+    const userId = TokenManager.getUserId();
+    if (!userId) {
+      console.log('No userId available');
+      return;
+    }
+
     const socket = getSocket(userId)
     if (!socket) return
 
@@ -242,7 +251,6 @@ export function useChannelSocket(userId: string) {
     })
 
     return () => {
-      // Don't disconnect, just remove listeners
       socket.off('connect', handleConnect)
       socket.off('disconnect', handleDisconnect)
       socket.off('connect_error', handleError)
@@ -253,13 +261,12 @@ export function useChannelSocket(userId: string) {
       socket.off('channel_delete', (channelId: string) => {
         console.log('Channel deleted event received:', channelId)
         router.push('/channels/general')
-        router.refresh()
       })
       socket.off('channel_error', (error: { message: string }) => {
         console.error('Channel operation failed:', error.message)
       })
     }
-  }, [router, userId])
+  }, [router])
 
   return {
     isConnected,

@@ -6,6 +6,7 @@ import { getMessages } from "@/components/MessageListServer"
 import { ChannelSwitcher } from "@/components/ChannelSwitcher"
 import { MessageList } from "@/components/MessageList"
 import { MessageInput } from "@/components/MessageInput"
+import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
 
 function decodeToken(token: string) {
   const payload = token.split('.')[1]
@@ -19,27 +20,22 @@ interface DMPageProps {
 
 export default async function DMPage({ params }: DMPageProps) {
   const resolvedParams = await params;
-  const { userId } = resolvedParams;
+  const { userId: otherUserId } = resolvedParams;
+  
   try {
     const cookieStore = await cookies()
-    const token = cookieStore.get('session-token')?.value
+    const supabase = createServerComponentClient({ cookies: () => cookieStore })
+    const { data: { user }, error } = await supabase.auth.getUser()
 
-    if (!token) {
+    if (error || !user) {
       redirect('/signin')
     }
 
-    const decoded = decodeToken(token)
-    const currentUser = await prisma.user.findUnique({
-      where: { id: decoded.id }
-    })
-
-    if (!currentUser) {
-      redirect('/signin')
-    }
+    const currentUserId = user.id
 
     // Get both users
     const otherUser = await prisma.user.findUnique({
-      where: { id: userId }
+      where: { id: otherUserId }
     })
 
     if (!otherUser) {
@@ -50,8 +46,8 @@ export default async function DMPage({ params }: DMPageProps) {
     let dmChat = await prisma.directChat.findFirst({
       where: {
         AND: [
-          { participants: { some: { id: currentUser.id } } },
-          { participants: { some: { id: userId } } }
+          { participants: { some: { id: currentUserId } } },
+          { participants: { some: { id: otherUserId } } }
         ]
       },
       include: {
@@ -65,8 +61,8 @@ export default async function DMPage({ params }: DMPageProps) {
         data: {
           participants: {
             connect: [
-              { id: currentUser.id },
-              { id: userId }
+              { id: currentUserId },
+              { id: otherUserId }
             ]
           }
         },
@@ -86,7 +82,7 @@ export default async function DMPage({ params }: DMPageProps) {
       where: {
         participants: {
           some: {
-            id: currentUser.id
+            id: currentUserId
           }
         }
       },
@@ -107,7 +103,7 @@ export default async function DMPage({ params }: DMPageProps) {
     // Map DMs to include other participant's info
     const dms = directChats.map(chat => ({
       ...chat,
-      otherUser: chat.participants.find(p => p.id !== currentUser.id)
+      otherUser: chat.participants.find(p => p.id !== currentUserId)
     }))
 
     const initialMessages = await getMessages(dmChat.id, true)
@@ -124,8 +120,8 @@ export default async function DMPage({ params }: DMPageProps) {
           <ChannelSwitcher 
             channels={channels}
             directChats={dms}
-            currentUserId={currentUser.id}
             currentChannelId={dmChat.id}
+            currentUserId={currentUserId}
           />
         </aside>
 
@@ -138,7 +134,7 @@ export default async function DMPage({ params }: DMPageProps) {
             <MessageList 
               initialMessages={initialMessages} 
               channelId={dmChat.id}
-              currentUserId={currentUser.id}
+              currentUserId={currentUserId}
               isDM={true}
             />
           </div>
