@@ -3,17 +3,15 @@ import { cookies } from "next/headers"
 
 export async function POST() {
   try {
-    // Get user ID from cookie before removing it
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
     const token = cookieStore.get('session-token')?.value
 
     if (token) {
-      // Decode token to get user ID
       const payload = token.split('.')[1]
       const decodedPayload = Buffer.from(payload, 'base64').toString('utf-8')
       const { id: userId } = JSON.parse(decodedPayload)
 
-      // Update user status to offline
+      // Here's where we update status to offline
       await prisma.user.update({
         where: { id: userId },
         data: { status: 'offline' }
