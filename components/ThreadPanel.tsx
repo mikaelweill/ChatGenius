@@ -120,7 +120,7 @@ export function ThreadPanel({ isOpen, onClose, originalMessage, channelId, curre
   return (
     <div className="h-full flex flex-col bg-white">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b">
+      <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white z-10">
         <h2 className="text-lg font-semibold">Thread</h2>
         <button 
           onClick={onClose}
@@ -131,7 +131,7 @@ export function ThreadPanel({ isOpen, onClose, originalMessage, channelId, curre
       </div>
 
       {/* Original Message */}
-      <div className="p-4 border-b">
+      <div className="p-4 border-b bg-white">
         <div className="flex items-center gap-2 mb-2">
           <div className="w-8 h-8 bg-indigo-500 text-white rounded-full flex items-center justify-center font-medium">
             {originalMessage.author.name?.[0].toUpperCase() || 'A'}
@@ -151,9 +151,9 @@ export function ThreadPanel({ isOpen, onClose, originalMessage, channelId, curre
       </div>
 
       {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
         {/* Replies */}
-        <div className="p-4">
+        <div className="p-4 pb-32">
           {originalMessage.replies?.map((reply) => (
             <div key={reply.id} className="mb-4 flex items-start gap-2">
               <div className="w-8 h-8 bg-indigo-500 text-white rounded-full flex items-center justify-center font-medium">
@@ -184,8 +184,8 @@ export function ThreadPanel({ isOpen, onClose, originalMessage, channelId, curre
       </div>
 
       {/* Reply Composer - Fixed at bottom */}
-      {activeReplyId ? (
-        <div className="border-t">
+      <div className="sticky bottom-0 left-0 right-0 border-t bg-white">
+        {activeReplyId ? (
           <div className="px-4 py-3">
             <div className="text-xs text-gray-500 mb-2">Reply to message</div>
             <ReplyComposer
@@ -194,9 +194,7 @@ export function ThreadPanel({ isOpen, onClose, originalMessage, channelId, curre
               replyToId={activeReplyId}
             />
           </div>
-        </div>
-      ) : (
-        <div className="border-t">
+        ) : (
           <div className="px-4 py-3">
             <div className="text-sm text-gray-500 mb-2">Reply to thread</div>
             <form onSubmit={handleMainReplySubmit}>
@@ -219,8 +217,8 @@ export function ThreadPanel({ isOpen, onClose, originalMessage, channelId, curre
               </div>
             </form>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 } 
