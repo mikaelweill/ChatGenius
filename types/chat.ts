@@ -1,6 +1,6 @@
-export type DirectChatWithParticipants = {
-  id: string
-  createdAt: Date
+import { DirectChat, User } from '@prisma/client'
+
+export interface DirectChatWithParticipants extends DirectChat {
   participants: {
     id: string
     name: string | null

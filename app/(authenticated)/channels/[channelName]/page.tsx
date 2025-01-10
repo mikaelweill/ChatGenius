@@ -15,7 +15,10 @@ export default async function ChannelPage({ params }: ChannelPageProps) {
   const { channelName } = resolvedParams;
   
   const cookieStore = cookies()
-  const supabase = createServerComponentClient({ cookies: () => cookieStore })
+  const supabase = createServerComponentClient({ 
+    cookies: () => cookieStore 
+  })
+  
   const { data: { user } } = await supabase.auth.getUser()
   
   if (!user) {
@@ -31,7 +34,35 @@ export default async function ChannelPage({ params }: ChannelPageProps) {
     redirect('/channels/general')
   }
 
-  const initialMessages = await getMessages(currentChannel.id)
+  // Get messages for this channel
+  const initialMessages = await prisma.message.findMany({
+    where: {
+      channelId: currentChannel.id
+    },
+    include: {
+      author: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          status: true
+        }
+      },
+      reactions: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true
+            }
+          }
+        }
+      }
+    },
+    orderBy: {
+      createdAt: 'asc'
+    }
+  })
 
   return (
     <>

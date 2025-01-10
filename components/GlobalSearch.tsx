@@ -52,7 +52,11 @@ function getHighlightedSnippet(content: string, query: string, snippetLength = 1
   return snippet
 }
 
-export default function GlobalSearch() {
+interface GlobalSearchProps {
+  userId?: string
+}
+
+export default function GlobalSearch({ userId }: GlobalSearchProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
   const [isLoading, setIsLoading] = useState(false)

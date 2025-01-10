@@ -175,14 +175,16 @@ export function MessageList({ initialMessages, channelId, currentUserId }: Messa
                 </button>
               ))}
               
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setShowEmojiPicker(message.id)
-                }}
-                className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors relative rounded-full"
-              >
-                <Smile size={16} />
+              <div className="relative inline-block">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setShowEmojiPicker(message.id)
+                  }}
+                  className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded-full"
+                >
+                  <Smile size={16} />
+                </button>
                 {showEmojiPicker === message.id && (
                   <div 
                     className="absolute left-0 top-6 bg-white shadow-lg rounded-lg p-3 z-50 border whitespace-nowrap emoji-picker"
@@ -195,21 +197,29 @@ export function MessageList({ initialMessages, channelId, currentUserId }: Messa
                   >
                     <div className="flex gap-2 px-1">
                       {["👍", "❤️", "😂", "😮", "😢", "👏"].map(emoji => (
-                        <button
+                        <div
                           key={emoji}
                           onClick={(e) => {
                             e.stopPropagation()
                             handleReaction(message.id, emoji)
                           }}
-                          className="p-2 hover:bg-gray-100 rounded text-lg"
+                          className="p-2 hover:bg-gray-100 rounded text-lg cursor-pointer"
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              handleReaction(message.id, emoji)
+                            }
+                          }}
                         >
                           {emoji}
-                        </button>
+                        </div>
                       ))}
                     </div>
                   </div>
                 )}
-              </button>
+              </div>
             </div>
           </div>
         </div>

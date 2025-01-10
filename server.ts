@@ -10,7 +10,13 @@ const dev = process.env.NODE_ENV !== 'production'
 const app = next({ dev })
 const handle = app.getRequestHandler()
 
-const userChannels = new Map<string, string>(); // socketId -> channelId
+const userChannels = new Map<string, string>() // socketId -> channelId
+const activeUsers = new Set<string>() // Set of online userIds
+const userStatuses = new Map<string, { status: string, updatedAt: Date, socketId: string }>();
+
+const isUserOnline = (userId: string) => {
+  return activeUsers.has(userId)
+}
 
 prisma.user.findFirst().then(user => {
   console.log('Prisma connection test:', !!user);
@@ -92,16 +98,82 @@ app.prepare().then(() => {
   })
 
   io.on('connection', async (socket) => {
+    console.log('Client connected:', socket.id)
+    const userId = socket.data.userId
+
+    // Mark user as online
+    activeUsers.add(userId)
+    userStatuses.set(userId, {
+      status: 'online',
+      updatedAt: new Date(),
+      socketId: socket.id
+    })
+
+    // Send current statuses to the new connection
+    const currentStatuses = Array.from(userStatuses.entries()).map(([userId, data]) => ({
+      userId,
+      status: data.status,
+      updatedAt: data.updatedAt
+    }))
+    socket.emit('initial_statuses', currentStatuses)
+
+    // Broadcast new user's status to all clients
+    io.emit('status_update', {
+      userId,
+      status: 'online',
+      updatedAt: new Date()
+    })
+
+    socket.on('status', async (data: { userId: string, status: string, updatedAt: Date }) => {
+      // Verify the user can only update their own status
+      if (data.userId !== userId) {
+        console.warn('User tried to update someone else\'s status:', { 
+          requestedUserId: data.userId, 
+          actualUserId: userId 
+        })
+        return
+      }
+
+      userStatuses.set(userId, {
+        status: data.status,
+        updatedAt: data.updatedAt,
+        socketId: socket.id
+      })
+
+      // Broadcast to all clients including sender
+      io.emit('status_update', {
+        userId,
+        status: data.status,
+        updatedAt: data.updatedAt
+      })
+    })
+
+    socket.on('disconnect', () => {
+      // Mark user as offline
+      activeUsers.delete(userId)
+      userStatuses.set(userId, {
+        status: 'offline',
+        updatedAt: new Date(),
+        socketId: socket.id
+      })
+
+      // Broadcast offline status
+      io.emit('status_update', {
+        userId,
+        status: 'offline',
+        updatedAt: new Date()
+      })
+    })
 
     // Debug ALL incoming events
-    // socket.onAny((eventName, ...args) => {
-    //   console.log('Received socket event:', {
-    //     event: eventName,
-    //     args: args,
-    //     socketId: socket.id,
-    //     userId: socket.data?.userId
-    //   })
-    // })
+    socket.onAny((eventName, ...args) => {
+      console.log('=== Socket Event Debug ===', {
+        event: eventName,
+        args: args,
+        socketId: socket.id,
+        userId: socket.data?.userId
+      })
+    })
 
     socket.on('join_channel', (channelId) => {
       const previousChannel = userChannels.get(socket.id)
@@ -383,7 +455,8 @@ app.prepare().then(() => {
     })
   })
 
-  server.listen(3000, () => {
-    console.log('> Ready on http://localhost:3000')
+  const port = parseInt(process.env.PORT || '3000', 10)
+  server.listen(port, () => {
+    console.log(`> Ready on http://localhost:${port}`)
   })
 }) 

@@ -9,7 +9,8 @@ export async function GET(req: Request) {
     const query = searchParams.get('q')
     const channelId = searchParams.get('channelId')
 
-    const supabase = createRouteHandlerClient({ cookies })
+    const cookieStore = cookies()
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
     const { data: { user }, error } = await supabase.auth.getUser()
     
     if (error || !user) {

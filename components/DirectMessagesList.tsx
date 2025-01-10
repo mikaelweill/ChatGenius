@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { DirectChatWithParticipants } from '@/types/chat'
+import { useUserStatus } from '@/contexts/UserStatusContext'
 
 interface DirectMessagesListProps {
   directChats: DirectChatWithParticipants[]
@@ -15,6 +16,7 @@ export function DirectMessagesList({
   currentUserId
 }: DirectMessagesListProps) {
   const router = useRouter()
+  const { statuses } = useUserStatus()
 
   useEffect(() => {
     // Refresh the page periodically to check for new DMs
@@ -42,6 +44,10 @@ export function DirectMessagesList({
               return null
             }
             
+            // Use the same status logic as Username component
+            const userStatus = statuses[chat.otherUser.id]
+            const isOnline = userStatus?.status === 'online' && userStatus?.updatedAt != null
+            
             return (
               <Link
                 key={chat.id}
@@ -49,11 +55,7 @@ export function DirectMessagesList({
                 className="flex items-center px-2 py-1 text-sm text-gray-300 hover:bg-gray-700 rounded"
               >
                 <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${
-                    chat.otherUser.status === 'online' 
-                      ? 'bg-green-500' 
-                      : 'bg-red-500'
-                  }`} />
+                  <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`} />
                   <span>@{chat.otherUser.name || 'Anonymous'}</span>
                 </div>
               </Link>

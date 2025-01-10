@@ -4,7 +4,8 @@ import { prisma } from "@/lib/prisma"
 
 export async function POST() {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
+    const cookieStore = cookies()
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
 
     // Get the current session
     const { data: { session } } = await supabase.auth.getSession()

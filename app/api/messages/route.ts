@@ -78,6 +78,12 @@ export async function POST(req: Request) {
       )
     }
 
+    // When user sends a message
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { updatedAt: new Date() }
+    })
+
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error("Error:", error)

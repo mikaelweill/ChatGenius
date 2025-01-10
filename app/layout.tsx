@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
-import { ActivityTracker } from '@/components/ActivityTracker'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { UserStatusProvider } from '@/contexts/UserStatusContext'
 
@@ -22,7 +21,6 @@ export default function RootLayout({
       <body className={inter.className}>
         <AuthProvider>
           <UserStatusProvider>
-            <ActivityTracker />
             {children}
           </UserStatusProvider>
         </AuthProvider>

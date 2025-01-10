@@ -5,16 +5,26 @@ import { ChannelSwitcher } from "@/components/ChannelSwitcher"
 import { LogoutButton } from '@/components/LogoutButton'
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import GlobalSearch from '@/components/GlobalSearch'
+import { headers } from 'next/headers'
+
+// Create a singleton for auth to avoid multiple cookie accesses
+async function getAuthUser() {
+  // Only get cookies once and reuse
+  const cookieStore = cookies()
+  const headersList = headers()
+  const supabase = createServerComponentClient({ 
+    cookies: () => cookieStore,
+  })
+  const { data: { user }, error } = await supabase.auth.getUser()
+  return { user, error }
+}
 
 export default async function AuthenticatedLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const cookieStore = cookies()
-  const supabase = createServerComponentClient({ cookies: () => cookieStore })
-  
-  const { data: { user }, error } = await supabase.auth.getUser()
+  const { user, error } = await getAuthUser()
 
   if (error || !user) {
     redirect('/signin')
@@ -51,7 +61,7 @@ export default async function AuthenticatedLayout({
   return (
     <div className="flex h-screen">
       <div className="absolute top-4 right-4">
-        <LogoutButton />
+        <LogoutButton userId={user.id} />
       </div>
       <aside className="w-64 bg-gray-800 text-white">
         <div className="p-4 border-b border-gray-700">
@@ -66,7 +76,7 @@ export default async function AuthenticatedLayout({
       <main className="flex-1 flex flex-col">
         <header className="h-16 border-b flex items-center px-6 justify-between">
           <div className="w-1/3">
-            <GlobalSearch />
+            <GlobalSearch userId={user.id} />
           </div>
         </header>
         {children}

@@ -63,6 +63,15 @@ const getSocket = (userId: string) => {
     forceNew: true
   })
 
+  // Debug all socket events
+  sharedSocket.onAny((eventName, ...args) => {
+    console.log('=== Client Socket Event ===', {
+      event: eventName,
+      args,
+      socketId: sharedSocket?.id
+    })
+  })
+
   sharedSocket.on('connect_error', (error) => {
     console.log('Socket connect error:', {
       message: error.message,
@@ -157,6 +166,9 @@ export function useSocket(identifier: { channelId?: string; DmID?: string }) {
       console.log("Socket connected with ID:", socket.id);
       setIsConnected(true);
 
+      // Request initial statuses when connected
+      socket.emit('request_statuses');
+
       if (identifier.channelId) {
         socket.emit("join_channel", identifier.channelId);
       } else if (identifier.DmID) {
@@ -171,7 +183,20 @@ export function useSocket(identifier: { channelId?: string; DmID?: string }) {
         (identifier.DmID && message.DmID === currentIdentifierRef.current.DmID)
       ) {
         console.log("Message received:", message);
-        // Handle the message as required
+      }
+    };
+
+    const handleDisconnect = () => {
+      console.log('Socket disconnected');
+      setIsConnected(false);
+      
+      // Emit offline status before disconnecting
+      if (userId) {
+        socket.emit('status', { 
+          userId, 
+          status: 'offline', 
+          updatedAt: new Date() 
+        });
       }
     };
 
@@ -188,12 +213,14 @@ export function useSocket(identifier: { channelId?: string; DmID?: string }) {
     }
 
     socket.on("connect", handleConnect);
+    socket.on("disconnect", handleDisconnect);
     socket.on("message_received", handleMessage);
     socket.on("reaction_added", handleReactionAdded);
     socket.on("reaction_removed", handleReactionRemoved);
 
     return () => {
       socket.off("connect", handleConnect);
+      socket.off("disconnect", handleDisconnect);
       socket.off("message_received", handleMessage);
       socket.off("reaction_added", handleReactionAdded);
       socket.off("reaction_removed", handleReactionRemoved);

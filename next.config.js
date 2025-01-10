@@ -2,7 +2,12 @@
 const nextConfig = {
   logging: {
     fetches: {
-      fullUrl: true
+      fullUrl: true,
+      // Ignore Supabase auth calls
+      ignoredRoutes: [
+        'https://bziaufbnnyxcpcfjszrg.supabase.co/auth/v1/user',
+        'https://bziaufbnnyxcpcfjszrg.supabase.co/auth/v1/token'
+      ]
     }
   },
   serverRuntimeConfig: {

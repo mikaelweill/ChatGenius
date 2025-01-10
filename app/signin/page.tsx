@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useRouter } from 'next/navigation'
-import { createBrowserClient } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 import { TokenManager } from '@/lib/tokenManager'
 
 export default function SignIn() {
@@ -15,7 +14,6 @@ export default function SignIn() {
   const [message, setMessage] = useState('')
   const codeInputs = useRef<(HTMLInputElement | null)[]>([])
   const router = useRouter()
-  const supabase = createBrowserClient()
   const emailInputRef = useRef<HTMLInputElement>(null)
   const [lastCodeSentAt, setLastCodeSentAt] = useState<Date | null>(null)
 
@@ -38,7 +36,7 @@ export default function SignIn() {
     setMessage("")
 
     try {
-      const { error } = await supabase.auth.signInWithOtp({
+      const { error } = await supabase().auth.signInWithOtp({
         email,
         options: {
           shouldCreateUser: true,
@@ -109,7 +107,7 @@ export default function SignIn() {
 
     try {
       // First try email verification (for existing users)
-      let { error } = await supabase.auth.verifyOtp({
+      let { error } = await supabase().auth.verifyOtp({
         email,
         token: codeToVerify,
         type: 'email'
@@ -117,7 +115,7 @@ export default function SignIn() {
 
       // If that fails, try signup verification
       if (error?.message?.includes('Invalid token')) {
-        const signupResult = await supabase.auth.verifyOtp({
+        const signupResult = await supabase().auth.verifyOtp({
           email,
           token: codeToVerify,
           type: 'signup'
@@ -131,7 +129,7 @@ export default function SignIn() {
       }
 
       // Get session after successful verification
-      const { data: { session } } = await supabase.auth.getSession()
+      const { data: { session } } = await supabase().auth.getSession()
       
       if (!session) {
         setError('Failed to get session')
@@ -153,7 +151,7 @@ export default function SignIn() {
       }
 
       // Store user ID and redirect
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { user } } = await supabase().auth.getUser()
       if (user?.id) {
         TokenManager.setUserId(user.id)
       }

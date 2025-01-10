@@ -13,8 +13,8 @@ export default async function DMPage({
 }) {
   const { userId: otherUserId } = await params
   
-const cookieStore = cookies()
-const supabase = createServerComponentClient({ cookies: () => cookieStore })
+ const cookieStore = cookies()
+ const supabase = createServerComponentClient({ cookies: () => cookieStore })
   
   const { data: { user } } = await supabase.auth.getUser()
   

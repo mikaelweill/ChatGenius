@@ -26,7 +26,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase().auth.getSession().then(({ data: { session } }) => {
       if (session?.access_token) {
         TokenManager.setToken(session.access_token)  // Store token
         TokenManager.setUserId(session.user.id)      // Store userId
@@ -39,18 +39,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase().auth.onAuthStateChange((_event, session) => {
       if (session?.access_token) {
-        TokenManager.setToken(session.access_token)  // Update token
-        TokenManager.setUserId(session.user.id)      // Update userId
+        TokenManager.setToken(session.access_token)
+        TokenManager.setUserId(session.user.id)
         setAuthState({
           userId: session.user.id,
           token: session.access_token,
           isLoading: false
         })
       } else {
-        TokenManager.removeToken()                   // Clear token
-        TokenManager.removeUserId()                  // Clear userId
+        TokenManager.removeToken()
+        TokenManager.removeUserId()
         setAuthState({
           userId: null,
           token: null,
@@ -59,7 +59,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      subscription?.unsubscribe()
+    }
   }, [])
 
   // Don't render children until we have auth state
