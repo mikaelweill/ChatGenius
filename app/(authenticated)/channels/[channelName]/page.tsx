@@ -7,11 +7,12 @@ import { cookies } from "next/headers"
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 
 interface ChannelPageProps {
-  params: { channelName: string }
+  params: Promise<{ channelName: string }>
 }
 
 export default async function ChannelPage({ params }: ChannelPageProps) {
-  const { channelName } = params
+  const resolvedParams = await params;
+  const { channelName } = resolvedParams;
   
   const cookieStore = await cookies()
   const supabase = createServerComponentClient({ cookies: () => cookieStore })
