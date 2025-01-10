@@ -54,7 +54,13 @@ const getSocket = (userId: string) => {
     length: userId.length
   })
 
-  sharedSocket = io({
+  const socketUrl = process.env.NODE_ENV === 'production'
+    ? process.env.NEXT_PUBLIC_APP_URL
+    : 'http://localhost:3000'
+
+  console.log('Connecting to socket URL:', socketUrl)
+
+  sharedSocket = io(socketUrl, {
     auth: { userId },
     reconnectionAttempts: 5,
     reconnectionDelay: 1000,

@@ -5,8 +5,8 @@ const nextConfig = {
       fullUrl: true,
       // Ignore Supabase auth calls
       ignoredRoutes: [
-        'https://bziaufbnnyxcpcfjszrg.supabase.co/auth/v1/user',
-        'https://bziaufbnnyxcpcfjszrg.supabase.co/auth/v1/token'
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/user`,
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/token`
       ]
     }
   },

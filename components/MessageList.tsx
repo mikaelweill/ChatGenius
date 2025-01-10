@@ -17,7 +17,7 @@ interface MessageListProps {
   onThreadOpen?: (message: MessageWithAuthorAndReactions) => void
 }
 
-export function MessageList({ initialMessages, channelId, currentUserId, messageIdToScrollTo, onThreadOpen }: MessageListProps) {
+export function MessageList({ initialMessages, channelId, currentUserId, isDM = false, messageIdToScrollTo, onThreadOpen }: MessageListProps) {
   const [messages, setMessages] = useState<MessageWithAuthorAndReactions[]>(initialMessages)
   const { socket, isConnected } = useSocket({ channelId })
   const containerRef = useRef<HTMLDivElement>(null)
@@ -82,17 +82,25 @@ export function MessageList({ initialMessages, channelId, currentUserId, message
     }
 
     if (socket) {
-      socket.on('message_received', handleMessageReceived)
+      if (isDM) {
+        socket.on('dm_message_received', handleMessageReceived)
+      } else {
+        socket.on('message_received', handleMessageReceived)
+      }
       socket.on('message_updated', handleMessageUpdated)
     }
 
     return () => {
       if (socket) {
-        socket.off('message_received', handleMessageReceived)
+        if (isDM) {
+          socket.off('dm_message_received', handleMessageReceived)
+        } else {
+          socket.off('message_received', handleMessageReceived)
+        }
         socket.off('message_updated', handleMessageUpdated)
       }
     }
-  }, [socket])
+  }, [socket, isDM])
 
   useEffect(() => {
     if (!socket) return

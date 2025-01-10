@@ -61,18 +61,19 @@ export default async function DMPage({
 
   const initialMessages = await getMessages(dmChat.id, true)
 
-  const header = (
-    <header className="h-16 border-b flex items-center px-6">
-      <h2 className="text-lg font-semibold">@ {otherUser.name}</h2>
-    </header>
-  );
-
   return (
-    <ChatContainer 
-      initialMessages={initialMessages}
-      channelId={dmChat.id}
-      currentUserId={user.id}
-      headerContent={header}
-    />
+    <div className="relative h-full">
+      <header className="absolute top-0 left-0 right-0 h-16 flex items-center px-6 bg-white border-b">
+        <h2 className="text-lg font-semibold">@ {otherUser.name}</h2>
+      </header>
+      <div className="h-full pt-16">
+        <ChatContainer 
+          initialMessages={initialMessages}
+          channelId={dmChat.id}
+          currentUserId={user.id}
+          isDM={true}
+        />
+      </div>
+    </div>
   )
 } 
