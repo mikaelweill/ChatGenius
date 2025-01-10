@@ -16,6 +16,7 @@ type MessageWithAuthorAndReactions = Message & {
   }
   reactions: (Reaction & {
     user: {
+      id: string;
       name: string | null;
     }
   })[]
@@ -25,6 +26,7 @@ interface MessageListProps {
   initialMessages: MessageWithAuthorAndReactions[]
   channelId: string
   currentUserId: string
+  isDM?: boolean
 }
 
 export function MessageList({ initialMessages, channelId, currentUserId }: MessageListProps) {
@@ -156,7 +158,7 @@ export function MessageList({ initialMessages, channelId, currentUserId }: Messa
                     }
                   }
                   acc[reaction.emoji].count++
-                  acc[reaction.emoji].users.push(reaction.user.name)
+                  acc[reaction.emoji].users.push(reaction.user.name || 'Anonymous')
                   acc[reaction.emoji].userIds.push(reaction.user.id)
                   return acc
                 }, {} as Record<string, { count: number, users: string[], userIds: string[] }>)

@@ -1,8 +1,8 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState } from 'react'
-import { supabase, type Session } from '@/lib/supabase'
-import { AuthError, User } from '@supabase/supabase-js'
+import { supabase } from '@/lib/supabase'
+import { AuthError, User, Session } from '@supabase/supabase-js'
 import { TokenManager } from '@/lib/tokenManager'
 
 type AuthContextType = {

@@ -8,17 +8,17 @@ const CHECK_INACTIVE_INTERVAL = 5 // Check every 5th request
 
 export async function POST() {
   try {
-    const cookieStore = await cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+    const cookieStore = cookies()
+    const supabase = createRouteHandlerClient({ 
+      cookies: () => cookieStore
+    })
+    
     const { data: { session } } = await supabase.auth.getSession()
     const userId = session?.user?.id
 
     if (!userId) {
-      console.log("⚠️ No authenticated user found")
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-
-    console.log("🔄 Updating activity for user:", userId)
 
     // Single query that updates current user AND checks for inactive users
     await prisma.$transaction(async (tx) => {
@@ -33,7 +33,6 @@ export async function POST() {
 
       // Check for inactive users periodically
       if (Math.random() < 1/CHECK_INACTIVE_INTERVAL) {
-        console.log("🔍 Checking for inactive users")
         const inactiveUsers = await tx.user.updateMany({
           where: {
             AND: [
@@ -44,13 +43,26 @@ export async function POST() {
           },
           data: { status: 'offline' }
         })
-        console.log(`📊 Marked ${inactiveUsers.count} users as offline`)
+        
+        if (inactiveUsers.count > 0) {
+          console.log(`Marked ${inactiveUsers.count} users as offline`)
+        }
       }
     })
 
-    return NextResponse.json({ success: true })
+    // Get all online users
+    const onlineUsers = await prisma.user.findMany({
+      where: { status: 'online' },
+      select: { id: true, status: true }
+    })
+
+    const statusMap = Object.fromEntries(
+      onlineUsers.map(user => [user.id, user.status])
+    )
+
+    return NextResponse.json({ statuses: statusMap })
   } catch (error) {
-    console.error('💥 Error updating activity:', error)
+    console.error('Error updating activity:', error)
     return NextResponse.json({ error: 'Failed to update activity' }, { status: 500 })
   }
 } 

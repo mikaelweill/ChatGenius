@@ -11,6 +11,7 @@ export async function getMessages(chatId: string, isDM: boolean = false) {
           id: true,
           name: true,
           email: true,
+          status: true
         }
       },
       reactions: {

@@ -3,11 +3,13 @@
 import { useEffect } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useRouter, usePathname } from 'next/navigation'
+import { useUserStatus } from '@/contexts/UserStatusContext'
 
 export function ActivityTracker() {
   const supabase = createClientComponentClient()
   const router = useRouter()
   const pathname = usePathname()
+  const { updateStatuses } = useUserStatus()
 
   useEffect(() => {
     let isRedirecting = false
@@ -29,7 +31,11 @@ export function ActivityTracker() {
         }
 
         if (user) {
-          await fetch('/api/activity/ping', { method: 'POST' })
+          const response = await fetch('/api/activity/ping', { method: 'POST' })
+          const data = await response.json()
+          if (data.statuses) {
+            updateStatuses(data.statuses)
+          }
         }
       } catch (error) {
         console.error('Activity tracker error:', error)
@@ -39,12 +45,12 @@ export function ActivityTracker() {
     // Initial ping
     pingActivity()
 
-    const interval = setInterval(pingActivity, 2000)
+    const interval = setInterval(pingActivity, 5000)
     
     return () => {
       clearInterval(interval)
     }
-  }, [supabase, router, pathname])
+  }, [supabase, router, pathname, updateStatuses])
 
   return null
 } 

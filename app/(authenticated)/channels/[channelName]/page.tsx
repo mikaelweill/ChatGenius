@@ -14,7 +14,7 @@ export default async function ChannelPage({ params }: ChannelPageProps) {
   const resolvedParams = await params;
   const { channelName } = resolvedParams;
   
-  const cookieStore = await cookies()
+  const cookieStore = cookies()
   const supabase = createServerComponentClient({ cookies: () => cookieStore })
   const { data: { user } } = await supabase.auth.getUser()
   

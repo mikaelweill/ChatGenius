@@ -6,15 +6,16 @@ import { getMessages } from "@/components/MessageListServer"
 import { cookies } from "next/headers"
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 
-interface DMPageProps {
-  params: { userId: string }
-}
-
-export default async function DMPage({ params }: DMPageProps) {
-  const { userId: otherUserId } = params
+export default async function DMPage({ 
+  params 
+}: { 
+  params: Promise<{ userId: string }> 
+}) {
+  const { userId: otherUserId } = await params
   
-  const cookieStore = await cookies()
-  const supabase = createServerComponentClient({ cookies: () => cookieStore })
+const cookieStore = cookies()
+const supabase = createServerComponentClient({ cookies: () => cookieStore })
+  
   const { data: { user } } = await supabase.auth.getUser()
   
   if (!user) {

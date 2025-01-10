@@ -3,8 +3,34 @@
 import { useEffect, useRef, useState } from 'react'
 import { io, Socket } from 'socket.io-client'
 import { useRouter } from 'next/navigation'
-import { Channel } from '@prisma/client'
+import { Channel, Message } from '@prisma/client'
 import { TokenManager } from '@/lib/tokenManager'
+
+type MessageWithAuthor = Message & {
+  author: {
+    id: string
+    name: string | null
+    email: string | null
+    status: string
+  }
+}
+
+type MessageWithAuthorAndReactions = Message & {
+  author: {
+    id: string
+    name: string | null
+    email: string | null
+    status: string
+  }
+  reactions: {
+    id: string
+    emoji: string
+    user: {
+      id: string
+      name: string | null
+    }
+  }[]
+}
 
 // Create a shared socket instance
 let sharedSocket: Socket | null = null
@@ -40,8 +66,8 @@ const getSocket = (userId: string) => {
   sharedSocket.on('connect_error', (error) => {
     console.log('Socket connect error:', {
       message: error.message,
-      data: error.data,
-      description: error.description
+      name: error.name,
+      stack: error.stack
     })
   })
 
@@ -309,27 +335,30 @@ export function useChannelSocket() {
 
 // Keep all existing code and add this new hook
 export function useDMMessages(dmId: string) {
-  const [messages, setMessages] = useState<MessageWithAuthor[]>([])
+  const [messages, setMessages] = useState<MessageWithAuthorAndReactions[]>([])
   const [isConnected, setIsConnected] = useState(false)
   const socketRef = useRef<Socket>()
-  const currentDMRef = useRef(dmId)
 
   useEffect(() => {
-    const socket = getSocket()
+    const userId = TokenManager.getUserId()
+    if (!userId) {
+      console.log('No userId available')
+      return
+    }
+
+    const socket = getSocket(userId)
     if (!socket) return
 
     socketRef.current = socket
-    currentDMRef.current = dmId
 
     const handleConnect = () => {
       console.log('DM socket connected with ID:', socket.id)
       setIsConnected(true)
+      socket.emit('join_dm', dmId)
     }
 
-    const handleMessage = (message: MessageWithAuthor) => {
-      if (message.directChatId === currentDMRef.current) {
-        setMessages(prev => [...prev, message])
-      }
+    const handleMessage = (message: MessageWithAuthorAndReactions) => {
+      setMessages(prev => [...prev, message])
     }
 
     if (socket.connected) {
@@ -337,24 +366,18 @@ export function useDMMessages(dmId: string) {
     }
 
     socket.on('connect', handleConnect)
-    socket.on('dm_message_received', handleMessage)
+    socket.on('message_received', handleMessage)
 
     return () => {
       socket.off('connect', handleConnect)
-      socket.off('dm_message_received', handleMessage)
+      socket.off('message_received', handleMessage)
     }
   }, [dmId])
 
   return {
     messages,
     isConnected,
-    sendMessage: (content: string) => {
-      if (!socketRef.current?.connected) return
-      socketRef.current.emit('new_dm_message', {
-        content,
-        chatId: dmId
-      })
-    }
+    socket: socketRef.current
   }
 }
 
@@ -362,14 +385,22 @@ export function useDMMessages(dmId: string) {
 export function useDMSocket() {
   const [isConnected, setIsConnected] = useState(false)
   const socketRef = useRef<Socket>()
+  const router = useRouter()
 
   useEffect(() => {
-    const socket = getSocket()
+    const userId = TokenManager.getUserId()
+    if (!userId) {
+      console.log('No userId available')
+      return
+    }
+
+    const socket = getSocket(userId)
     if (!socket) return
 
     socketRef.current = socket
 
     const handleConnect = () => {
+      console.log('DM socket connected with ID:', socket.id)
       setIsConnected(true)
     }
 
@@ -382,14 +413,10 @@ export function useDMSocket() {
     return () => {
       socket.off('connect', handleConnect)
     }
-  }, [])
+  }, [router])
 
   return {
-    createDM: (otherUserId: string, callback: (response: { chatId?: string, error?: string }) => void) => {
-      if (!socketRef.current?.connected) return
-      
-      socketRef.current.emit('create_dm', { otherUserId }, callback)
-    },
-    isConnected
+    isConnected,
+    socket: socketRef.current
   }
 } 

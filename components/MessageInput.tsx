@@ -9,7 +9,7 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!content.trim() || !isConnected) return
+    if (!content.trim() || !isConnected || !socket) return
 
     try {
       console.log('Sending message with isDM:', isDM)

@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { ActivityTracker } from '@/components/ActivityTracker'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { UserStatusProvider } from '@/contexts/UserStatusContext'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -20,8 +21,10 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <AuthProvider>
-          <ActivityTracker />
-          {children}
+          <UserStatusProvider>
+            <ActivityTracker />
+            {children}
+          </UserStatusProvider>
         </AuthProvider>
       </body>
     </html>

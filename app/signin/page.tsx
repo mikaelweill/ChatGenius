@@ -42,8 +42,9 @@ export default function SignIn() {
         email,
         options: {
           shouldCreateUser: true,
-          channel: 'email',
-          type: 'otp'
+          data: {
+            email
+          }
         }
       })
 
@@ -219,7 +220,10 @@ export default function SignIn() {
                   key={index}
                   type="text"
                   maxLength={1}
-                  ref={el => codeInputs.current[index] = el}
+                  ref={(el: HTMLInputElement | null) => {
+                    codeInputs.current[index] = el
+                    return undefined
+                  }}
                   value={code[index] || ''}
                   onChange={(e) => handleCodeChange(index, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(index, e)}

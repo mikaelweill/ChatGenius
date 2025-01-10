@@ -1,12 +1,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  typescript: {
-    // This will ignore build-time type errors
-    // Use this only if you're confident about runtime behavior
-    ignoreBuildErrors: true,
+  logging: {
+    fetches: {
+      fullUrl: true
+    }
   },
-
-  
+  serverRuntimeConfig: {
+    logging: {
+      // Disable logging for /api/activity/ping
+      ignoredRoutes: ['/api/activity/ping']
+    }
+  }
 }
 
 module.exports = nextConfig 

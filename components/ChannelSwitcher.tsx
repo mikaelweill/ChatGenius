@@ -2,23 +2,26 @@
 
 import { useState } from 'react'
 import { Channel } from '@prisma/client'
-import { DirectChat } from '@prisma/client'
 import Link from 'next/link'
 import { Trash2, Plus } from 'lucide-react'
 import { useChannelSocket } from '@/hooks/useSocket'
 import { DirectMessagesList } from './DirectMessagesList'
+import { usePathname } from 'next/navigation'
+import { DirectChatWithParticipants } from '@/types/chat'
 
 interface ChannelSwitcherProps {
   channels: Channel[]
-  currentChannelId: string
-  directChats: DirectChat[]
+  directChats: DirectChatWithParticipants[]
   currentUserId: string
 }
 
-export function ChannelSwitcher({ channels, currentChannelId, directChats, currentUserId }: ChannelSwitcherProps) {
+export function ChannelSwitcher({ channels, directChats, currentUserId }: ChannelSwitcherProps) {
   const [isCreating, setIsCreating] = useState(false)
   const [newChannelName, setNewChannelName] = useState('')
-  const { isConnected, createChannel, deleteChannel } = useChannelSocket(currentUserId)
+  const { isConnected, createChannel, deleteChannel } = useChannelSocket()
+  const pathname = usePathname()
+  const segments = pathname.split('/')
+  const currentChannelId = channels.find(c => c.name === segments[2])?.id || ''
 
   const isDuplicateName = channels.some(
     channel => channel.name.toLowerCase() === newChannelName.toLowerCase()

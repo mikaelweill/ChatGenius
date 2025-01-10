@@ -3,33 +3,17 @@
 import { useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import type { DirectChat } from '@prisma/client'
-
-type DirectChatWithParticipants = DirectChat & {
-  participants: {
-    id: string
-    name: string
-    email: string
-    status: string
-  }[]
-  otherUser: {
-    id: string
-    name: string
-    email: string
-    status: string
-  }
-}
+import { DirectChatWithParticipants } from '@/types/chat'
 
 interface DirectMessagesListProps {
-  directChats: DirectChat[]
+  directChats: DirectChatWithParticipants[]
   currentUserId: string
 }
 
 export function DirectMessagesList({
-  directChats
-}: {
-  directChats: DirectChatWithParticipants[]
-}) {
+  directChats,
+  currentUserId
+}: DirectMessagesListProps) {
   const router = useRouter()
 
   useEffect(() => {
@@ -70,7 +54,7 @@ export function DirectMessagesList({
                       ? 'bg-green-500' 
                       : 'bg-red-500'
                   }`} />
-                  <span>@{chat.otherUser.name}</span>
+                  <span>@{chat.otherUser.name || 'Anonymous'}</span>
                 </div>
               </Link>
             )

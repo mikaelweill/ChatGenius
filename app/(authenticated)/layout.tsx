@@ -11,7 +11,7 @@ export default async function AuthenticatedLayout({
 }: {
   children: React.ReactNode
 }) {
-  const cookieStore = await cookies()
+  const cookieStore = cookies()
   const supabase = createServerComponentClient({ cookies: () => cookieStore })
   
   const { data: { user }, error } = await supabase.auth.getUser()
