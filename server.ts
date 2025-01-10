@@ -52,7 +52,9 @@ app.prepare().then(() => {
 
   const io = new Server(server, {
     cors: {
-      origin: '*',
+      origin: process.env.NODE_ENV === 'production' 
+        ? process.env.NEXT_PUBLIC_APP_URL 
+        : '*',
       methods: ['GET', 'POST'],
       credentials: true
     }
@@ -535,8 +537,8 @@ app.prepare().then(() => {
     })
   })
 
-  const port = parseInt(process.env.PORT || '3000', 10)
+  const port = process.env.PORT || 3000
   server.listen(port, () => {
-    console.log(`> Ready on http://localhost:${port}`)
+    console.log(`> Ready on http://localhost:${port} - env ${process.env.NODE_ENV}`)
   })
 }) 
