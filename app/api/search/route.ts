@@ -7,9 +7,8 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url)
     const query = searchParams.get('q')
-    const channelId = searchParams.get('channelId') // Optional channel filter
+    const channelId = searchParams.get('channelId')
 
-    // Auth check
     const supabase = createRouteHandlerClient({ cookies })
     const { data: { user }, error } = await supabase.auth.getUser()
     
@@ -21,21 +20,37 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Search query required' }, { status: 400 })
     }
 
-    // Build the where clause based on whether channelId is provided
-    const whereClause = channelId 
-      ? {
-          AND: [
-            { content: { contains: query, mode: 'insensitive' } },
-            { channelId }
-          ]
-        }
-      : {
-          content: { contains: query, mode: 'insensitive' }
-        }
-
-    // Search messages
+    // Search both channels and DMs
     const messages = await prisma.message.findMany({
-      where: whereClause,
+      where: {
+        AND: [
+          // Search query
+          {
+            content: { contains: query, mode: 'insensitive' }
+          },
+          // Channel or DM condition
+          {
+            OR: [
+              // If channelId is provided, only search in that channel
+              ...(channelId ? [{
+                channelId: channelId
+              }] : [
+                // Otherwise, search in all channels and user's DMs
+                {
+                  channelId: { not: null }  // Messages in any channel
+                },
+                {
+                  directChat: {  // Messages in user's DMs
+                    participants: {
+                      some: { id: user.id }
+                    }
+                  }
+                }
+              ])
+            ]
+          }
+        ]
+      },
       include: {
         author: {
           select: {
@@ -49,12 +64,22 @@ export async function GET(req: Request) {
             id: true,
             name: true
           }
+        },
+        directChat: {
+          include: {
+            participants: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
+          }
         }
       },
       orderBy: {
         createdAt: 'desc'
       },
-      take: 20 // Limit results
+      take: 20
     })
 
     return NextResponse.json({
@@ -63,7 +88,11 @@ export async function GET(req: Request) {
         content: msg.content,
         createdAt: msg.createdAt,
         author: msg.author,
-        channel: msg.channel
+        channel: msg.channel,
+        isDM: !!msg.directChat,
+        dmPartner: msg.directChat 
+          ? msg.directChat.participants.find(p => p.id !== user.id)
+          : null
       }))
     })
 

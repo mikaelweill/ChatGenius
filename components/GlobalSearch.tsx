@@ -17,6 +17,11 @@ interface SearchResult {
     id: string
     name: string
   }
+  isDM: boolean
+  dmPartner?: {
+    id: string
+    name: string
+  }
 }
 
 export default function GlobalSearch() {
@@ -66,7 +71,11 @@ export default function GlobalSearch() {
   }, [debouncedSearch])
 
   const handleResultClick = (result: SearchResult) => {
-    router.push(`/channels/${result.channel.name}`)
+    if (result.isDM && result.dmPartner?.id) {
+      router.push(`/channels/dm/${result.dmPartner.id}`)
+    } else if (result.channel?.name) {
+      router.push(`/channels/${result.channel.name}`)
+    }
     setIsOpen(false)
     setSearchQuery('')
   }
@@ -99,7 +108,10 @@ export default function GlobalSearch() {
             >
               <div className="flex flex-col">
                 <span className="text-sm font-medium">
-                  #{result.channel.name} • {result.author.name}
+                  {result.isDM 
+                    ? (result.dmPartner ? `@${result.dmPartner.name}` : 'Unknown User')
+                    : (result.channel ? `#${result.channel.name}` : 'Unknown Channel')
+                  } • {result.author.name}
                 </span>
                 <span className="text-sm text-gray-600 truncate">
                   {result.content}
