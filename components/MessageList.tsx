@@ -86,25 +86,40 @@ export function MessageList({ initialMessages, channelId, currentUserId, message
 
   // Update message received handler
   useEffect(() => {
-    if (!socket) return
-
-    socket.on('message_received', (message: MessageWithAuthorAndReactions) => {
-      setMessages(prev => {
-        const newMessages = [...prev, message]
-        // If we should auto-scroll, do it in the next tick
-        if (shouldAutoScroll.current) {
-          setTimeout(() => {
-            if (containerRef.current) {
-              containerRef.current.scrollTop = containerRef.current.scrollHeight
-            }
-          }, 0)
-        }
-        return newMessages
+    const handleMessageReceived = (message: MessageWithAuthorAndReactions) => {
+      setMessages(prevMessages => {
+        // If this is a reply, we don't add it to the main list
+        if (message.parentId) return prevMessages;
+        return [...prevMessages, message]
       })
-    })
+      
+      if (shouldAutoScroll.current) {
+        setTimeout(() => {
+          if (containerRef.current) {
+            containerRef.current.scrollTop = containerRef.current.scrollHeight
+          }
+        }, 100)
+      }
+    }
+
+    const handleMessageUpdated = (updatedMessage: MessageWithAuthorAndReactions) => {
+      setMessages(prevMessages => 
+        prevMessages.map(msg => 
+          msg.id === updatedMessage.id ? updatedMessage : msg
+        )
+      )
+    }
+
+    if (socket) {
+      socket.on('message_received', handleMessageReceived)
+      socket.on('message_updated', handleMessageUpdated)
+    }
 
     return () => {
-      socket.off('message_received')
+      if (socket) {
+        socket.off('message_received', handleMessageReceived)
+        socket.off('message_updated', handleMessageUpdated)
+      }
     }
   }, [socket])
 

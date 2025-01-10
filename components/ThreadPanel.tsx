@@ -94,17 +94,14 @@ export function ThreadPanel({ isOpen, onClose, originalMessage, channelId, curre
     if (!content.trim() || !socket) return
 
     try {
+      console.log('Sending reply with parentId:', parentId);
       socket.emit('new_message', {
         content,
         channelId,
         parentId,
-        authorId: currentUserId,
-        author: {
-          id: currentUserId,
-          name: originalMessage.author.name,
-          status: originalMessage.author.status
-        }
+        isDM: false
       })
+      setMainReplyContent('')
       setActiveReplyId(null)
     } catch (error) {
       console.error('Failed to send reply:', error)
@@ -113,6 +110,7 @@ export function ThreadPanel({ isOpen, onClose, originalMessage, channelId, curre
 
   const handleMainReplySubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    console.log('Submitting main reply to message:', originalMessage.id);
     handleSubmitReply(mainReplyContent)
     setMainReplyContent('')
   }

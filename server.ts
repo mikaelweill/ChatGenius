@@ -188,11 +188,13 @@ app.prepare().then(() => {
 
     socket.on('new_message', async (data) => {
       try {
+        console.log('Received message data:', data);
         const messageData: {
           content: string;
           authorId: string;
           directChatId?: string;
           channelId?: string;
+          parentId?: string;
         } = {
           content: data.content,
           authorId: socket.data.userId,
@@ -204,6 +206,14 @@ app.prepare().then(() => {
           messageData.channelId = data.channelId
         }
 
+        // Add parentId if it exists (for thread replies)
+        if (data.parentId) {
+          console.log('Setting parentId:', data.parentId);
+          messageData.parentId = data.parentId
+        }
+
+        console.log('Final message data:', messageData);
+
         const savedMessage = await prisma.message.create({
           data: messageData,
           include: {
@@ -212,19 +222,109 @@ app.prepare().then(() => {
                 id: true,
                 name: true,
                 email: true,
+                status: true
               },
             },
+            parentMessage: {
+              include: {
+                author: {
+                  select: {
+                    id: true,
+                    name: true,
+                    status: true
+                  }
+                },
+                replies: {
+                  include: {
+                    author: {
+                      select: {
+                        id: true,
+                        name: true,
+                        status: true
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            replies: {
+              include: {
+                author: {
+                  select: {
+                    id: true,
+                    name: true,
+                    status: true
+                  }
+                }
+              }
+            }
           },
         })
 
+        console.log('Saved message:', savedMessage);
+
+        // If this is a reply, we should emit an updated version of the parent message
+        if (data.parentId) {
+          const updatedParentMessage = await prisma.message.findUnique({
+            where: { id: data.parentId },
+            include: {
+              author: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  status: true
+                }
+              },
+              reactions: {
+                include: {
+                  user: {
+                    select: {
+                      id: true,
+                      name: true
+                    }
+                  }
+                }
+              },
+              replies: {
+                orderBy: {
+                  createdAt: 'asc'
+                },
+                include: {
+                  author: {
+                    select: {
+                      id: true,
+                      name: true,
+                      status: true
+                    }
+                  },
+                  reactions: {
+                    include: {
+                      user: {
+                        select: {
+                          id: true,
+                          name: true
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          })
+          
+          if (updatedParentMessage) {
+            console.log('Emitting updated parent message:', updatedParentMessage);
+            io.to(data.channelId).emit('message_updated', updatedParentMessage)
+          }
+        }
+
         socket.join(data.channelId)
-        io.to(data.channelId).emit('message_received', savedMessage)
+        // Only emit message_received if it's not a reply
+        if (!data.parentId) {
+          io.to(data.channelId).emit('message_received', savedMessage)
+        }
         
-        // console.log('Message saved and emitted:', {
-        //   message: savedMessage,
-        //   isDM: data.isDM,
-        //   chatId: data.channelId
-        // })
       } catch (error) {
         console.error('Error processing message:', error)
       }
