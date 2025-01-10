@@ -3,13 +3,15 @@ import { MessageInput } from "@/components/MessageInput"
 import { getChannelData } from "./ChannelPageServer"
 
 interface ChannelPageProps {
-  params: { channelName: string }
-  searchParams: { messageId?: string }
+  params: Promise<{ channelName: string }>
+  searchParams: Promise<{ messageId?: string }>
 }
 
 export default async function ChannelPage({ params, searchParams }: ChannelPageProps) {
-  const { channelName } = params;
-  const { messageId } = searchParams;
+  const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
+  const { channelName } = resolvedParams;
+  const messageId = resolvedSearchParams.messageId;
 
   const { user, currentChannel, initialMessages } = await getChannelData(channelName)
 

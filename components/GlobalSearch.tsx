@@ -119,13 +119,34 @@ export default function GlobalSearch({ userId }: GlobalSearchProps) {
   }, [debouncedSearch])
 
   const handleResultClick = (result: SearchResult) => {
+    let path;
     if (result.isDM && result.dmPartner?.id) {
-      router.push(`/channels/dm/${result.dmPartner.id}`)
+      path = `/channels/dm/${result.dmPartner.id}`;
     } else if (result.channel?.name) {
-      router.push(`/channels/${result.channel.name}`)
+      path = `/channels/${result.channel.name}`;
+    } else {
+      return;
     }
-    setIsOpen(false)
-    setSearchQuery('')
+    
+    // Add messageId as a search param
+    const newPath = `${path}?messageId=${result.id}`;
+    
+    // If we're already on the same path (without query params), manually scroll
+    const currentPath = window.location.pathname;
+    if (currentPath === path) {
+      const messageElement = document.getElementById(`message-${result.id}`);
+      if (messageElement) {
+        messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Update URL without full navigation
+        window.history.pushState({}, '', newPath);
+      }
+    } else {
+      // Different channel, use router for full navigation
+      router.push(newPath);
+    }
+    
+    setIsOpen(false);
+    setSearchQuery('');
   }
 
   return (

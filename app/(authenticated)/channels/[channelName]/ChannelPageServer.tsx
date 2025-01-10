@@ -27,7 +27,8 @@ export async function getChannelData(channelName: string) {
   // Get messages for this channel
   const initialMessages = await prisma.message.findMany({
     where: {
-      channelId: currentChannel.id
+      channelId: currentChannel.id,
+      parentId: null // Only get top-level messages
     },
     include: {
       author: {
@@ -44,6 +45,21 @@ export async function getChannelData(channelName: string) {
             select: {
               id: true,
               name: true
+            }
+          }
+        }
+      },
+      replies: {
+        where: {
+          parentId: { not: null }
+        },
+        include: {
+          author: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              status: true
             }
           }
         }

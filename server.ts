@@ -19,7 +19,7 @@ const isUserOnline = (userId: string) => {
 }
 
 prisma.user.findFirst().then(user => {
-  console.log('Prisma connection test:', !!user);
+  // console.log('Prisma connection test:', !!user);
 }).catch(err => {
   console.error('Prisma connection error:', err);
 });
@@ -59,37 +59,37 @@ app.prepare().then(() => {
   })
 
   io.use(async (socket, next) => {
-    console.log('=== Socket Auth Debug ===');
-    console.log('1. Raw handshake:', {
-      auth: socket.handshake.auth,
-      query: socket.handshake.query,
-      headers: socket.handshake.headers
-    });
+    // console.log('=== Socket Auth Debug ===');
+    // console.log('1. Raw handshake:', {
+    //   auth: socket.handshake.auth,
+    //   query: socket.handshake.query,
+    //   headers: socket.handshake.headers
+    // });
 
     const userId = socket.handshake.auth.userId;
-    console.log('2. Extracted userId:', userId);
+    // console.log('2. Extracted userId:', userId);
 
     if (!userId) {
-      console.log('3a. Failed: No userId provided');
+      // console.log('3a. Failed: No userId provided');
       return next(new Error('Authentication error'));
     }
 
     try {
-      console.log('3b. Looking up user in database:', userId);
+      // console.log('3b. Looking up user in database:', userId);
       const user = await prisma.user.findUnique({
         where: { id: userId },
         select: { id: true, email: true }  // Just for logging
       });
 
-      console.log('4. Database lookup result:', user);
+      // console.log('4. Database lookup result:', user);
 
       if (!user) {
-        console.log('5a. Failed: User not found in database');
+        // console.log('5a. Failed: User not found in database');
         return next(new Error('Authentication error'));
       }
 
       socket.data.userId = userId;
-      console.log('5b. Success: User authenticated:', { userId, socketId: socket.id });
+      // console.log('5b. Success: User authenticated:', { userId, socketId: socket.id });
       next();
     } catch (error) {
       console.error('5c. Failed: Database error:', error);
@@ -98,7 +98,7 @@ app.prepare().then(() => {
   })
 
   io.on('connection', async (socket) => {
-    console.log('Client connected:', socket.id)
+    // console.log('Client connected:', socket.id)
     const userId = socket.data.userId
 
     // Mark user as online
@@ -166,14 +166,14 @@ app.prepare().then(() => {
     })
 
     // Debug ALL incoming events
-    socket.onAny((eventName, ...args) => {
-      console.log('=== Socket Event Debug ===', {
-        event: eventName,
-        args: args,
-        socketId: socket.id,
-        userId: socket.data?.userId
-      })
-    })
+    // socket.onAny((eventName, ...args) => {
+    //   console.log('=== Socket Event Debug ===', {
+    //     event: eventName,
+    //     args: args,
+    //     socketId: socket.id,
+    //     userId: socket.data?.userId
+    //   })
+    // })
 
     socket.on('join_channel', (channelId) => {
       const previousChannel = userChannels.get(socket.id)
@@ -187,15 +187,7 @@ app.prepare().then(() => {
     })
 
     socket.on('new_message', async (data) => {
-      console.log('Message received:', {
-        data,
-        socketId: socket.id,
-        userId: socket.data.userId,
-        isDM: data.isDM
-      })
-      
       try {
-        // Define the type for messageData
         const messageData: {
           content: string;
           authorId: string;
@@ -206,11 +198,10 @@ app.prepare().then(() => {
           authorId: socket.data.userId,
         }
 
-        // Add the correct chat ID field
         if (data.isDM) {
-          messageData.directChatId = data.channelId // Use dot notation instead of bracket notation
+          messageData.directChatId = data.channelId
         } else {
-          messageData.channelId = data.channelId // Use dot notation instead of bracket notation
+          messageData.channelId = data.channelId
         }
 
         const savedMessage = await prisma.message.create({
@@ -226,17 +217,14 @@ app.prepare().then(() => {
           },
         })
 
-        // Join the room (whether channel or DM)
         socket.join(data.channelId)
-        
-        // Emit to everyone in the room
         io.to(data.channelId).emit('message_received', savedMessage)
         
-        console.log('Message saved and emitted:', {
-          message: savedMessage,
-          isDM: data.isDM,
-          chatId: data.channelId
-        })
+        // console.log('Message saved and emitted:', {
+        //   message: savedMessage,
+        //   isDM: data.isDM,
+        //   chatId: data.channelId
+        // })
       } catch (error) {
         console.error('Error processing message:', error)
       }
@@ -244,11 +232,11 @@ app.prepare().then(() => {
     
 
     socket.on('channel_create', async (data) => {
-      console.log('Channel create event received:', {
-        data,
-        socketId: socket.id,
-        userId: socket.data.userId
-      })
+      // console.log('Channel create event received:', {
+      //   data,
+      //   socketId: socket.id,
+      //   userId: socket.data.userId
+      // })
       try {
         const newChannel = await prisma.channel.create({
           data: {
@@ -257,7 +245,7 @@ app.prepare().then(() => {
           }
         })
         
-        console.log('Successfully created channel:', newChannel)
+        // console.log('Successfully created channel:', newChannel)
         io.emit('channel_created', newChannel)
       } catch (error) {
         console.error('Error creating channel:', error)
@@ -322,16 +310,14 @@ app.prepare().then(() => {
     })
 
     socket.on("user_signup", async (data) => {
-      console.log("New user signup event received:", data);
+      // console.log("New user signup event received:", data);
     
       try {
-        // Fetch all existing users except the new user
         const existingUsers = await prisma.user.findMany({
           where: { id: { not: data.userId } },
           select: { id: true },
         });
     
-        // Create DMs with all existing users
         const createDMs = existingUsers.map((existingUser) =>
           prisma.directChat.create({
             data: {
@@ -347,11 +333,10 @@ app.prepare().then(() => {
     
         await Promise.all(createDMs);
     
-        console.log(
-          `DMs created between new user ${data.userId} and existing users`
-        );
+        // console.log(
+        //   `DMs created between new user ${data.userId} and existing users`
+        // );
     
-        // Notify connected clients about new DMs
         existingUsers.forEach((existingUser) => {
           io.to(existingUser.id).emit("dm_created", { newUserId: data.userId });
         });
@@ -362,11 +347,11 @@ app.prepare().then(() => {
     
 
     socket.on('new_dm_message', async (data) => {
-      console.log('DM message received:', {
-        data,
-        socketId: socket.id,
-        userId: socket.data.userId
-      })
+      // console.log('DM message received:', {
+      //   data,
+      //   socketId: socket.id,
+      //   userId: socket.data.userId
+      // })
       
       try {
         const savedMessage = await prisma.message.create({
@@ -386,7 +371,6 @@ app.prepare().then(() => {
           },
         })
 
-        // Get DM participants and emit to them
         const chat = await prisma.directChat.findUnique({
           where: { id: data.chatId },
           include: { participants: true }
@@ -395,7 +379,7 @@ app.prepare().then(() => {
         chat?.participants.forEach(participant => {
           io.to(participant.id).emit('dm_message_received', savedMessage)
         })
-        console.log('Emitted DM message:', savedMessage)
+        // console.log('Emitted DM message:', savedMessage)
       } catch (error) {
         console.error('Error processing DM message:', error)
       }

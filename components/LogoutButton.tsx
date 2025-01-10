@@ -4,13 +4,15 @@ import { useRouter } from 'next/navigation'
 import { TokenManager } from '@/lib/tokenManager'
 import { useSocket } from '@/hooks/useSocket'
 
-export function LogoutButton() {
+interface Props {
+  userId: string
+}
+
+export function LogoutButton({ userId }: Props) {
   const router = useRouter()
   const { socket } = useSocket({})
   
   const handleLogout = async () => {
-    const userId = TokenManager.getUserId()
-    
     // Emit offline status before logging out
     if (socket && userId) {
       socket.emit('status', {
@@ -23,7 +25,7 @@ export function LogoutButton() {
       await new Promise(resolve => setTimeout(resolve, 100))
     }
     
-    // Clear token and redirect
+    // Clear token and userId
     TokenManager.removeToken()
     TokenManager.removeUserId()
     router.push('/signin')
@@ -37,4 +39,4 @@ export function LogoutButton() {
       Log out
     </button>
   )
-} 
+}

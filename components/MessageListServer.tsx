@@ -14,13 +14,14 @@ type MessageWithAuthorAndReactions = Message & {
       name: string | null
     }
   })[]
+  replies: Message[]
 }
 
 export async function getMessages(chatId: string, isDM: boolean = false): Promise<MessageWithAuthorAndReactions[]> {
   const messages = await prisma.message.findMany({
     where: isDM 
-      ? { directChatId: chatId }
-      : { channelId: chatId },
+      ? { directChatId: chatId, parentId: null }
+      : { channelId: chatId, parentId: null },
     include: {
       author: {
         select: {
@@ -36,6 +37,21 @@ export async function getMessages(chatId: string, isDM: boolean = false): Promis
             select: {
               id: true,
               name: true
+            }
+          }
+        }
+      },
+      replies: {
+        where: {
+          parentId: { not: null }
+        },
+        include: {
+          author: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              status: true
             }
           }
         }

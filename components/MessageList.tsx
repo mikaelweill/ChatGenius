@@ -5,7 +5,7 @@ import { useSocket } from '@/hooks/useSocket'
 import { Message, Reaction } from '@prisma/client'
 import { Username } from './Username'
 import { SessionContext } from '@/components/SessionProvider'
-import { Smile } from 'lucide-react'
+import { Smile, MessageSquare } from 'lucide-react'
 
 type MessageWithAuthorAndReactions = Message & {
   author: {
@@ -20,6 +20,7 @@ type MessageWithAuthorAndReactions = Message & {
       name: string | null;
     }
   })[]
+  replies: Message[]
 }
 
 interface MessageListProps {
@@ -189,7 +190,6 @@ export function MessageList({ initialMessages, channelId, currentUserId, message
             <div className="flex flex-wrap gap-2 mt-2 relative">
               {Object.entries(
                 (message.reactions || []).reduce((acc, reaction) => {
-                  // Group reactions by emoji
                   if (!acc[reaction.emoji]) {
                     acc[reaction.emoji] = {
                       count: 0,
@@ -215,50 +215,65 @@ export function MessageList({ initialMessages, channelId, currentUserId, message
                 </button>
               ))}
               
-              <div className="relative inline-block">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setShowEmojiPicker(message.id)
-                  }}
-                  className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded-full"
-                >
-                  <Smile size={16} />
-                </button>
-                {showEmojiPicker === message.id && (
-                  <div 
-                    className="absolute left-0 top-6 bg-white shadow-lg rounded-lg p-3 z-50 border whitespace-nowrap emoji-picker"
-                    onMouseLeave={(e) => {
-                      const toElement = e.relatedTarget as HTMLElement
-                      if (!toElement?.closest('.emoji-picker')) {
-                        setShowEmojiPicker(null)
-                      }
+              <div className="flex items-center gap-2">
+                <div className="relative inline-block">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setShowEmojiPicker(message.id)
                     }}
+                    className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded-full"
                   >
-                    <div className="flex gap-2 px-1">
-                      {["👍", "❤️", "😂", "😮", "😢", "👏"].map(emoji => (
-                        <div
-                          key={emoji}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleReaction(message.id, emoji)
-                          }}
-                          className="p-2 hover:bg-gray-100 rounded text-lg cursor-pointer"
-                          role="button"
-                          tabIndex={0}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault()
+                    <Smile size={16} />
+                  </button>
+                  {showEmojiPicker === message.id && (
+                    <div 
+                      className="absolute left-0 top-6 bg-white shadow-lg rounded-lg p-3 z-50 border whitespace-nowrap emoji-picker"
+                      onMouseLeave={(e) => {
+                        const toElement = e.relatedTarget as HTMLElement
+                        if (!toElement?.closest('.emoji-picker')) {
+                          setShowEmojiPicker(null)
+                        }
+                      }}
+                    >
+                      <div className="flex gap-2 px-1">
+                        {["👍", "❤️", "😂", "😮", "😢", "👏"].map(emoji => (
+                          <div
+                            key={emoji}
+                            onClick={(e) => {
+                              e.stopPropagation()
                               handleReaction(message.id, emoji)
-                            }
-                          }}
-                        >
-                          {emoji}
-                        </div>
-                      ))}
+                            }}
+                            className="p-2 hover:bg-gray-100 rounded text-lg cursor-pointer"
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault()
+                                handleReaction(message.id, emoji)
+                              }
+                            }}
+                          >
+                            {emoji}
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
+
+                <button
+                  onClick={() => {
+                    // We'll implement this next
+                    console.log('Open thread for message:', message.id)
+                  }}
+                  className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded-full flex items-center gap-1 opacity-0 group-hover:opacity-100"
+                >
+                  <MessageSquare size={16} />
+                  {message.replies?.length > 0 && (
+                    <span className="text-xs">{message.replies.length}</span>
+                  )}
+                </button>
               </div>
             </div>
           </div>
