@@ -79,7 +79,9 @@ export default async function AuthenticatedLayout({
             <LogoutButton userId={user.id} />
           </div>
         </header>
-        {children}
+        <div className="flex-1 flex flex-col">
+          {children}
+        </div>
       </main>
     </div>
   )

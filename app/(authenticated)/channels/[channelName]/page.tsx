@@ -1,6 +1,5 @@
-import { MessageList } from "@/components/MessageList"
-import { MessageInput } from "@/components/MessageInput"
 import { getChannelData } from "./ChannelPageServer"
+import { ChatContainer } from "@/components/ChatContainer"
 
 interface ChannelPageProps {
   params: Promise<{ channelName: string }>
@@ -15,19 +14,19 @@ export default async function ChannelPage({ params, searchParams }: ChannelPageP
 
   const { user, currentChannel, initialMessages } = await getChannelData(channelName)
 
+  const header = (
+    <header className="h-16 border-b flex items-center px-6">
+      <h2 className="text-lg font-semibold"># {channelName}</h2>
+    </header>
+  );
+
   return (
-    <div className="flex-1 flex flex-col h-[calc(100vh-4rem)]">
-      <div className="flex-1 overflow-hidden">
-        <MessageList 
-          initialMessages={initialMessages} 
-          channelId={currentChannel.id}
-          currentUserId={user.id}
-          messageIdToScrollTo={messageId}
-        />
-      </div>
-      <div className="sticky bottom-0 bg-white border-t">
-        <MessageInput channelId={currentChannel.id} />
-      </div>
-    </div>
+    <ChatContainer 
+      initialMessages={initialMessages}
+      channelId={currentChannel.id}
+      currentUserId={user.id}
+      messageIdToScrollTo={messageId}
+      headerContent={header}
+    />
   )
 } 

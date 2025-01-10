@@ -1,10 +1,9 @@
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
-import { MessageList } from "@/components/MessageList"
-import { MessageInput } from "@/components/MessageInput"
 import { getMessages } from "@/components/MessageListServer"
 import { cookies } from "next/headers"
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
+import { ChatContainer } from "@/components/ChatContainer"
 
 export default async function DMPage({ 
   params 
@@ -13,8 +12,8 @@ export default async function DMPage({
 }) {
   const { userId: otherUserId } = await params
   
- const cookieStore = cookies()
- const supabase = createServerComponentClient({ cookies: () => cookieStore })
+  const cookieStore = cookies()
+  const supabase = createServerComponentClient({ cookies: () => cookieStore })
   
   const { data: { user } } = await supabase.auth.getUser()
   
@@ -62,25 +61,18 @@ export default async function DMPage({
 
   const initialMessages = await getMessages(dmChat.id, true)
 
+  const header = (
+    <header className="h-16 border-b flex items-center px-6">
+      <h2 className="text-lg font-semibold">@ {otherUser.name}</h2>
+    </header>
+  );
+
   return (
-    <>
-      <header className="h-16 border-b flex items-center px-6">
-        <h2 className="text-lg font-semibold">@ {otherUser.name}</h2>
-      </header>
-
-      <div className="flex-1 overflow-y-auto">
-        <MessageList 
-          initialMessages={initialMessages} 
-          channelId={dmChat.id}
-          currentUserId={user.id}
-          isDM={true}
-        />
-      </div>
-
-      <MessageInput 
-        channelId={dmChat.id}
-        isDM={true}
-      />
-    </>
+    <ChatContainer 
+      initialMessages={initialMessages}
+      channelId={dmChat.id}
+      currentUserId={user.id}
+      headerContent={header}
+    />
   )
 } 
