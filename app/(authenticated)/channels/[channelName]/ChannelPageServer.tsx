@@ -3,36 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { cookies } from "next/headers"
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Message, Reaction } from "@prisma/client"
-
-type MessageWithAuthorAndReactions = {
-  id: string
-  createdAt: Date
-  updatedAt: Date
-  content: string
-  authorId: string
-  channelId: string | null
-  directChatId: string | null
-  parentId: string | null
-  author: {
-    id: string
-    name: string | null
-    email: string | null
-    status: string
-  }
-  reactions: (Reaction & {
-    user: {
-      id: string
-      name: string | null
-    }
-  })[]
-  replies: (Message & {
-    author: {
-      id: string
-      name: string | null
-      status: string
-    }
-  })[]
-}
+import { MessageWithAuthorAndReactions } from '@/types/message'
 
 export async function getChannelData(channelName: string) {
   const cookieStore = cookies()

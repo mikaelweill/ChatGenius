@@ -5,36 +5,7 @@ import { MessageInput } from "@/components/MessageInput"
 import { ThreadPanel } from "@/components/ThreadPanel"
 import { useState } from "react"
 import { Message, Reaction } from "@prisma/client"
-
-type MessageWithAuthorAndReactions = {
-  id: string
-  createdAt: Date
-  updatedAt: Date
-  content: string
-  authorId: string
-  channelId: string | null
-  directChatId: string | null
-  parentId: string | null
-  author: {
-    id: string
-    name: string | null
-    email: string | null
-    status: string
-  }
-  reactions: (Reaction & {
-    user: {
-      id: string
-      name: string | null
-    }
-  })[]
-  replies: (Message & {
-    author: {
-      id: string
-      name: string | null
-      status: string
-    }
-  })[]
-}
+import { MessageWithAuthorAndReactions } from '@/types/message'
 
 interface ChatContainerProps {
   initialMessages: MessageWithAuthorAndReactions[]

@@ -1,26 +1,14 @@
 import { useRouter } from 'next/navigation'
-import { Message, Reaction } from '@prisma/client'
+import { MessageWithAuthorAndReactions } from '@/types/message'
 
-type MessageWithAuthorAndReactions = Message & {
-  author: {
-    name: string | null;
-    id: string;
-    email: string | null;
-    status: string;
-  }
-  reactions: (Reaction & {
-    user: {
-      id: string;
-      name: string | null;
-    }
-  })[]
+interface SearchMessage extends MessageWithAuthorAndReactions {
   isDM?: boolean
 }
 
-export function SearchResults({ messages }: { messages: MessageWithAuthorAndReactions[] }) {
+export function SearchResults({ messages }: { messages: SearchMessage[] }) {
   const router = useRouter()
 
-  const handleMessageClick = (message: MessageWithAuthorAndReactions) => {
+  const handleMessageClick = (message: SearchMessage) => {
     // Navigate to the channel/DM first
     const path = message.isDM 
       ? `/dm/${message.channelId}` 
