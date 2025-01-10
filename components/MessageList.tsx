@@ -27,9 +27,10 @@ interface MessageListProps {
   channelId: string
   currentUserId: string
   isDM?: boolean
+  messageIdToScrollTo?: string
 }
 
-export function MessageList({ initialMessages, channelId, currentUserId }: MessageListProps) {
+export function MessageList({ initialMessages, channelId, currentUserId, messageIdToScrollTo }: MessageListProps) {
   const [messages, setMessages] = useState<MessageWithAuthorAndReactions[]>(initialMessages)
   const { socket, isConnected } = useSocket({ channelId })
   const containerRef = useRef<HTMLDivElement>(null)
@@ -37,6 +38,7 @@ export function MessageList({ initialMessages, channelId, currentUserId }: Messa
   const [showEmojiPicker, setShowEmojiPicker] = useState<string | null>(null)
   const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null)
   const shouldAutoScroll = useRef(true)
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null)
 
   const isNearBottom = () => {
     const container = containerRef.current
@@ -134,6 +136,19 @@ export function MessageList({ initialMessages, channelId, currentUserId }: Messa
     setShowEmojiPicker(null)
   }
 
+  // Scroll to specific message if messageIdToScrollTo is provided
+  useEffect(() => {
+    if (messageIdToScrollTo && containerRef.current) {
+      const messageElement = document.getElementById(`message-${messageIdToScrollTo}`)
+      if (messageElement) {
+        messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        setHighlightedMessageId(messageIdToScrollTo)
+        // Remove highlight after 2 seconds
+        setTimeout(() => setHighlightedMessageId(null), 2000)
+      }
+    }
+  }, [messageIdToScrollTo, messages])
+
   return (
     <div 
       ref={containerRef} 
@@ -141,7 +156,15 @@ export function MessageList({ initialMessages, channelId, currentUserId }: Messa
       className="flex flex-col space-y-4 p-4 overflow-y-auto max-h-[calc(100vh-8rem)]"
     >
       {messages.map((message) => (
-        <div key={message.id} className="flex items-start gap-3 group hover:bg-gray-100 p-2 rounded-lg transition-colors">
+        <div 
+          id={`message-${message.id}`}
+          key={message.id} 
+          className={`flex items-start gap-3 group p-2 rounded-lg transition-colors ${
+            message.id === highlightedMessageId 
+              ? 'bg-blue-50 hover:bg-blue-100' 
+              : 'hover:bg-gray-100'
+          }`}
+        >
           <div className="flex-shrink-0">
             <div className="w-10 h-10 bg-indigo-500 text-white rounded-full flex items-center justify-center font-medium shadow-sm">
               {message.author.name?.[0].toUpperCase() || 'A'}
