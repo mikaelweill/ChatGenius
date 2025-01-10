@@ -2,7 +2,7 @@
 
 import { X } from 'lucide-react'
 import { Message, Reaction } from '@prisma/client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSocket } from '@/hooks/useSocket'
 import { Username } from './Username'
 
@@ -45,10 +45,36 @@ interface ThreadPanelProps {
 }
 
 export function ThreadPanel({ isOpen, onClose, originalMessage, channelId, currentUserId }: ThreadPanelProps) {
+  const [message, setMessage] = useState<MessageWithAuthorAndReactions | null>(null)
   const [mainReplyContent, setMainReplyContent] = useState('')
   const { socket, isConnected } = useSocket({ channelId })
   
-  if (!isOpen || !originalMessage) return null;
+  // Update message when originalMessage changes
+  useEffect(() => {
+    if (originalMessage) {
+      setMessage(originalMessage)
+    }
+  }, [originalMessage])
+
+  // Listen for message updates
+  useEffect(() => {
+    if (!socket || !message) return
+
+    const handleMessageUpdated = (updatedMessage: MessageWithAuthorAndReactions) => {
+      if (updatedMessage.id === message.id) {
+        console.log('Updating thread message:', updatedMessage)
+        setMessage(updatedMessage)
+      }
+    }
+
+    socket.on('message_updated', handleMessageUpdated)
+
+    return () => {
+      socket.off('message_updated', handleMessageUpdated)
+    }
+  }, [socket, message?.id])
+
+  if (!isOpen || !message) return null;
 
   const handleSubmitReply = async (content: string) => {
     if (!content.trim() || !socket) return
@@ -57,7 +83,7 @@ export function ThreadPanel({ isOpen, onClose, originalMessage, channelId, curre
       socket.emit('new_message', {
         content,
         channelId,
-        parentId: originalMessage.id,
+        parentId: message.id,
         isDM: false
       })
       setMainReplyContent('')
@@ -89,27 +115,27 @@ export function ThreadPanel({ isOpen, onClose, originalMessage, channelId, curre
       <div className="p-4 border-b bg-white">
         <div className="flex items-center gap-2 mb-2">
           <div className="w-8 h-8 bg-indigo-500 text-white rounded-full flex items-center justify-center font-medium">
-            {originalMessage.author.name?.[0].toUpperCase() || 'A'}
+            {message.author.name?.[0].toUpperCase() || 'A'}
           </div>
           <div>
             <Username 
-              userId={originalMessage.author.id}
-              name={originalMessage.author.name}
-              status={originalMessage.author.status}
+              userId={message.author.id}
+              name={message.author.name}
+              status={message.author.status}
             />
             <div className="text-xs text-gray-500">
-              {new Date(originalMessage.createdAt).toLocaleString()}
+              {new Date(message.createdAt).toLocaleString()}
             </div>
           </div>
         </div>
-        <p className="text-gray-700">{originalMessage.content}</p>
+        <p className="text-gray-700">{message.content}</p>
       </div>
 
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
         {/* Replies */}
         <div className="p-4 pb-32">
-          {originalMessage.replies?.map((reply) => (
+          {message.replies?.map((reply) => (
             <div key={reply.id} className="mb-4 flex items-start gap-2">
               <div className="w-8 h-8 bg-indigo-500 text-white rounded-full flex items-center justify-center font-medium">
                 {reply.author.name?.[0].toUpperCase() || 'A'}

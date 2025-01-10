@@ -144,10 +144,9 @@ export const emitSocketEvent = async (event: string, data: any) => {
 export function useSocket(identifier: { channelId?: string; DmID?: string }) {
   const [isConnected, setIsConnected] = useState(false);
   const socketRef = useRef<Socket>();
-  const currentIdentifierRef = useRef(identifier); // Track current identifier (channel or DM)
+  const currentIdentifierRef = useRef(identifier);
 
   useEffect(() => {
-    // Get userId from storage instead of props
     const userId = TokenManager.getUserId();
     if (!userId) {
       console.log('No userId available');
@@ -158,16 +157,11 @@ export function useSocket(identifier: { channelId?: string; DmID?: string }) {
     if (!socket) return;
 
     socketRef.current = socket;
-    currentIdentifierRef.current = identifier; // Update current identifier
-
-    console.log("Current identifier:", currentIdentifierRef.current);
+    currentIdentifierRef.current = identifier;
 
     const handleConnect = () => {
       console.log("Socket connected with ID:", socket.id);
       setIsConnected(true);
-
-      // Request initial statuses when connected
-      socket.emit('request_statuses');
 
       if (identifier.channelId) {
         socket.emit("join_channel", identifier.channelId);
@@ -176,37 +170,10 @@ export function useSocket(identifier: { channelId?: string; DmID?: string }) {
       }
     };
 
-    const handleMessage = (message: any) => {
-      // Handle messages based on the current identifier
-      if (
-        (identifier.channelId && message.channelId === currentIdentifierRef.current.channelId) ||
-        (identifier.DmID && message.DmID === currentIdentifierRef.current.DmID)
-      ) {
-        console.log("Message received:", message);
-      }
-    };
-
     const handleDisconnect = () => {
       console.log('Socket disconnected');
       setIsConnected(false);
-      
-      // Emit offline status before disconnecting
-      if (userId) {
-        socket.emit('status', { 
-          userId, 
-          status: 'offline', 
-          updatedAt: new Date() 
-        });
-      }
     };
-
-    const handleReactionAdded = ({ messageId, reaction }: any) => {
-      console.log("Reaction added:", { messageId, reaction })
-    }
-
-    const handleReactionRemoved = ({ messageId, reactionId }: any) => {
-      console.log("Reaction removed:", { messageId, reactionId })
-    }
 
     if (socket.connected) {
       handleConnect();
@@ -214,39 +181,16 @@ export function useSocket(identifier: { channelId?: string; DmID?: string }) {
 
     socket.on("connect", handleConnect);
     socket.on("disconnect", handleDisconnect);
-    socket.on("message_received", handleMessage);
-    socket.on("reaction_added", handleReactionAdded);
-    socket.on("reaction_removed", handleReactionRemoved);
 
     return () => {
       socket.off("connect", handleConnect);
       socket.off("disconnect", handleDisconnect);
-      socket.off("message_received", handleMessage);
-      socket.off("reaction_added", handleReactionAdded);
-      socket.off("reaction_removed", handleReactionRemoved);
     };
-  }, [identifier]); // Re-run effect when identifier changes
+  }, [identifier]);
 
   return {
     socket: socketRef.current,
-    isConnected,
-    sendMessage: (content: string) => {
-      if (!socketRef.current?.connected) return;
-
-      const payload: any = { content };
-      if (identifier.channelId) payload.channelId = identifier.channelId;
-      if (identifier.DmID) payload.DmID = identifier.DmID;
-
-      socketRef.current.emit("new_message", payload);
-    },
-    addReaction: (messageId: string, emoji: string) => {
-      if (!socketRef.current?.connected) return;
-      socketRef.current.emit("add_reaction", {
-        messageId,
-        emoji,
-        channelId: identifier.channelId
-      });
-    }
+    isConnected
   };
 }
 

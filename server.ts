@@ -225,24 +225,12 @@ app.prepare().then(() => {
                 status: true
               },
             },
-            parentMessage: {
+            reactions: {
               include: {
-                author: {
+                user: {
                   select: {
                     id: true,
-                    name: true,
-                    status: true
-                  }
-                },
-                replies: {
-                  include: {
-                    author: {
-                      select: {
-                        id: true,
-                        name: true,
-                        status: true
-                      }
-                    }
+                    name: true
                   }
                 }
               }
@@ -255,13 +243,21 @@ app.prepare().then(() => {
                     name: true,
                     status: true
                   }
+                },
+                reactions: {
+                  include: {
+                    user: {
+                      select: {
+                        id: true,
+                        name: true
+                      }
+                    }
+                  }
                 }
               }
             }
           },
         })
-
-        console.log('Saved message:', savedMessage);
 
         // If this is a reply, we should emit an updated version of the parent message
         if (data.parentId) {

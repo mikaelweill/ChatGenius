@@ -6,7 +6,7 @@ import { LogoutButton } from '@/components/LogoutButton'
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import GlobalSearch from '@/components/GlobalSearch'
 import { headers } from 'next/headers'
-import MessageInput from '@/components/MessageInput'
+import { MessageInput } from '@/components/MessageInput'
 
 // Create a singleton for auth to avoid multiple cookie accesses
 async function getAuthUser() {
