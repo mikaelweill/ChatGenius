@@ -36,6 +36,7 @@ export function MessageList({ initialMessages, channelId, currentUserId }: Messa
   const session = useContext(SessionContext)
   const [showEmojiPicker, setShowEmojiPicker] = useState<string | null>(null)
   const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null)
+  const shouldAutoScroll = useRef(true)
 
   const isNearBottom = () => {
     const container = containerRef.current
@@ -52,16 +53,28 @@ export function MessageList({ initialMessages, channelId, currentUserId }: Messa
     }
   }, [messages])
 
+  // Add scroll listener to update shouldAutoScroll
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const handleScroll = () => {
+      shouldAutoScroll.current = isNearBottom()
+    }
+
+    container.addEventListener('scroll', handleScroll)
+    return () => container.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  // Update message received handler
   useEffect(() => {
     if (!socket) return
 
     socket.on('message_received', (message: MessageWithAuthorAndReactions) => {
-      const wasAtBottom = isNearBottom()
       setMessages(prev => {
         const newMessages = [...prev, message]
-        // Only scroll if we were at the bottom
-        if (wasAtBottom) {
-          // Force a scroll in the next tick
+        // If we should auto-scroll, do it in the next tick
+        if (shouldAutoScroll.current) {
           setTimeout(() => {
             if (containerRef.current) {
               containerRef.current.scrollTop = containerRef.current.scrollHeight
@@ -122,7 +135,11 @@ export function MessageList({ initialMessages, channelId, currentUserId }: Messa
   }
 
   return (
-    <div key={channelId} className="space-y-4 p-4">
+    <div 
+      ref={containerRef} 
+      key={channelId} 
+      className="flex flex-col space-y-4 p-4 overflow-y-auto max-h-[calc(100vh-8rem)]"
+    >
       {messages.map((message) => (
         <div key={message.id} className="flex items-start gap-3 group hover:bg-gray-100 p-2 rounded-lg transition-colors">
           <div className="flex-shrink-0">

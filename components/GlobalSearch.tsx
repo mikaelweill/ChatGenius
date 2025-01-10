@@ -52,6 +52,21 @@ function getHighlightedSnippet(content: string, query: string, snippetLength = 1
   return snippet
 }
 
+function highlightText(text: string, query: string): string {
+  if (!query.trim()) return text
+  
+  // Split query into words and escape special regex characters
+  const words = query.split(' ')
+    .filter(word => word.length > 0)
+    .map(word => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+  
+  // Create regex that matches any of the words
+  const regex = new RegExp(`(${words.join('|')})`, 'gi')
+  
+  // Replace matches with highlighted version
+  return text.replace(regex, '<strong>$1</strong>')
+}
+
 interface GlobalSearchProps {
   userId?: string
 }
@@ -142,9 +157,19 @@ export default function GlobalSearch({ userId }: GlobalSearchProps) {
               <div className="flex flex-col gap-1">
                 <span className="text-sm font-medium">
                   {result.isDM 
-                    ? (result.dmPartner ? `@${result.dmPartner.name}` : 'Unknown User')
-                    : (result.channel ? `#${result.channel.name}` : 'Unknown Channel')
-                  } • {result.author.name}
+                    ? (result.dmPartner 
+                        ? <span dangerouslySetInnerHTML={{ 
+                            __html: `@${highlightText(result.dmPartner.name, searchQuery)}`
+                          }} />
+                        : 'Unknown User')
+                    : (result.channel 
+                        ? <span dangerouslySetInnerHTML={{ 
+                            __html: `#${highlightText(result.channel.name, searchQuery)}`
+                          }} />
+                        : 'Unknown Channel')
+                  } • <span dangerouslySetInnerHTML={{ 
+                      __html: highlightText(result.author.name, searchQuery)
+                    }} />
                 </span>
                 <span 
                   className="text-sm text-gray-600 line-clamp-2"
