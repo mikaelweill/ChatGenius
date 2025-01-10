@@ -169,7 +169,7 @@ export function MessageList({ initialMessages, channelId, currentUserId, isDM = 
         <div 
           id={`message-${message.id}`}
           key={message.id} 
-          className={`flex items-start gap-3 group p-2 rounded-lg transition-colors ${
+          className={`flex items-start gap-3 group p-2 rounded-lg transition-colors relative ${
             message.id === highlightedMessageId 
               ? 'bg-blue-50 hover:bg-blue-100' 
               : 'hover:bg-gray-100'
@@ -197,69 +197,73 @@ export function MessageList({ initialMessages, channelId, currentUserId, isDM = 
             <p className="text-gray-700 break-words">{message.content}</p>
             
             <div className="flex items-center gap-2 mt-2">
-              <div className="relative inline-block">
+              <div className="flex items-center space-x-1.5">
+                <div className="relative">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setShowEmojiPicker(message.id)
+                    }}
+                    className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded-full"
+                  >
+                    <Smile size={16} />
+                  </button>
+                  {showEmojiPicker === message.id && (
+                    <div 
+                      className="fixed bg-white shadow-lg rounded-lg p-3 border whitespace-nowrap emoji-picker"
+                      style={{ 
+                        minWidth: '200px',
+                        zIndex: 100,
+                        transform: 'translateY(0.5rem)',
+                      }}
+                      onMouseLeave={(e) => {
+                        const toElement = e.relatedTarget as HTMLElement
+                        if (!toElement?.closest('.emoji-picker')) {
+                          setShowEmojiPicker(null)
+                        }
+                      }}
+                    >
+                      <div className="flex gap-2 px-1">
+                        {["👍", "❤️", "😂", "😮", "😢", "👏"].map(emoji => (
+                          <div
+                            key={emoji}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleReaction(message.id, emoji)
+                            }}
+                            className="p-2 hover:bg-gray-100 rounded text-lg cursor-pointer"
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault()
+                                handleReaction(message.id, emoji)
+                              }
+                            }}
+                          >
+                            {emoji}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <button
                   onClick={(e) => {
-                    e.stopPropagation()
-                    setShowEmojiPicker(message.id)
+                    e.stopPropagation();
+                    if (typeof onThreadOpen === 'function') {
+                      onThreadOpen(message);
+                    }
                   }}
-                  className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded-full"
+                  className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded-full flex items-center gap-1"
                 >
-                  <Smile size={16} />
+                  <MessageSquare size={16} />
+                  {message.replies?.length > 0 && (
+                    <span className="text-xs">{message.replies.length}</span>
+                  )}
                 </button>
-                {showEmojiPicker === message.id && (
-                  <div 
-                    className="absolute left-0 top-6 bg-white shadow-lg rounded-lg p-3 z-50 border whitespace-nowrap emoji-picker"
-                    onMouseLeave={(e) => {
-                      const toElement = e.relatedTarget as HTMLElement
-                      if (!toElement?.closest('.emoji-picker')) {
-                        setShowEmojiPicker(null)
-                      }
-                    }}
-                  >
-                    <div className="flex gap-2 px-1">
-                      {["👍", "❤️", "😂", "😮", "😢", "👏"].map(emoji => (
-                        <div
-                          key={emoji}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleReaction(message.id, emoji)
-                          }}
-                          className="p-2 hover:bg-gray-100 rounded text-lg cursor-pointer"
-                          role="button"
-                          tabIndex={0}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault()
-                              handleReaction(message.id, emoji)
-                            }
-                          }}
-                        >
-                          {emoji}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
 
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  console.log('Thread button clicked');
-                  if (typeof onThreadOpen === 'function') {
-                    onThreadOpen(message);
-                  }
-                }}
-                className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded-full flex items-center gap-1"
-              >
-                <MessageSquare size={16} />
-                {message.replies?.length > 0 && (
-                  <span className="text-xs">{message.replies.length}</span>
-                )}
-              </button>
-
-              <div className="flex flex-wrap gap-2">
                 {Object.entries(
                   (message.reactions || []).reduce((acc, reaction) => {
                     if (!acc[reaction.emoji]) {
@@ -278,12 +282,13 @@ export function MessageList({ initialMessages, channelId, currentUserId, isDM = 
                   <button
                     key={emoji}
                     onClick={() => handleReaction(message.id, emoji)}
-                    className={`bg-gray-100 rounded-full px-2 py-1 text-sm hover:bg-gray-200 ${
+                    className={`inline-flex items-center bg-gray-100 rounded-full px-2 py-0.5 text-sm hover:bg-gray-200 ${
                       data.userIds.includes(currentUserId) ? 'border-2 border-blue-400' : ''
                     }`}
                     title={`${data.users.join(', ')} reacted with ${emoji}`}
                   >
-                    {emoji} {data.count > 1 && data.count}
+                    <span>{emoji}</span>
+                    {data.count > 1 && <span className="ml-1 text-gray-600">{data.count}</span>}
                   </button>
                 ))}
               </div>
