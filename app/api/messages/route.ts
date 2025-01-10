@@ -35,8 +35,7 @@ export async function GET(req: Request) {
 // POST handler for creating messages
 export async function POST(req: Request) {
   try {
-    const cookieStore = cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+    const supabase = createRouteHandlerClient({ cookies })
     
     // Get authenticated user
     const { data: { user }, error } = await supabase.auth.getUser()
