@@ -148,7 +148,7 @@ export function MessageList({ initialMessages, channelId, currentUserId, message
         setTimeout(() => setHighlightedMessageId(null), 2000)
       }
     }
-  }, [messageIdToScrollTo, messages])
+  }, [messageIdToScrollTo]);
 
   return (
     <div 
