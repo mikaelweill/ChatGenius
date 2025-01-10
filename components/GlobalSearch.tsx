@@ -24,6 +24,34 @@ interface SearchResult {
   }
 }
 
+function getHighlightedSnippet(content: string, query: string, snippetLength = 150) {
+  const lowerContent = content.toLowerCase()
+  const lowerQuery = query.toLowerCase()
+  const matchIndex = lowerContent.indexOf(lowerQuery)
+  
+  if (matchIndex === -1) return content.slice(0, snippetLength) + '...'
+
+  // Calculate start and end positions for the snippet
+  const start = Math.max(0, matchIndex - snippetLength / 3)
+  const end = Math.min(content.length, matchIndex + query.length + snippetLength / 3)
+  let snippet = content.slice(start, end)
+
+  // Add ellipsis if we're cutting content
+  if (start > 0) snippet = '...' + snippet
+  if (end < content.length) snippet += '...'
+
+  // Split the query into words for highlighting
+  const queryWords = query.split(' ').filter(word => word.length > 0)
+  
+  // Replace each word with a highlighted version
+  queryWords.forEach(word => {
+    const regex = new RegExp(`(${word})`, 'gi')
+    snippet = snippet.replace(regex, '<strong>$1</strong>')
+  })
+
+  return snippet
+}
+
 export default function GlobalSearch() {
   const [searchQuery, setSearchQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
@@ -57,6 +85,7 @@ export default function GlobalSearch() {
         const response = await fetch(`/api/search?q=${encodeURIComponent(debouncedSearch)}`)
         const data = await response.json()
         if (response.ok) {
+          console.log('Search results:', data.results.length)
           setResults(data.results)
           setIsOpen(true)
         }
@@ -106,16 +135,19 @@ export default function GlobalSearch() {
               onClick={() => handleResultClick(result)}
               className="w-full px-4 py-2 text-left hover:bg-gray-100 focus:outline-none focus:bg-gray-100"
             >
-              <div className="flex flex-col">
+              <div className="flex flex-col gap-1">
                 <span className="text-sm font-medium">
                   {result.isDM 
                     ? (result.dmPartner ? `@${result.dmPartner.name}` : 'Unknown User')
                     : (result.channel ? `#${result.channel.name}` : 'Unknown Channel')
                   } • {result.author.name}
                 </span>
-                <span className="text-sm text-gray-600 truncate">
-                  {result.content}
-                </span>
+                <span 
+                  className="text-sm text-gray-600 line-clamp-2"
+                  dangerouslySetInnerHTML={{ 
+                    __html: getHighlightedSnippet(result.content, searchQuery)
+                  }}
+                />
                 <span className="text-xs text-gray-400">
                   {new Date(result.createdAt).toLocaleDateString()}
                 </span>

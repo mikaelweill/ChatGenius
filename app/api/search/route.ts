@@ -82,6 +82,8 @@ export async function GET(req: Request) {
       take: 20
     })
 
+    console.log('Search found messages:', messages.length)
+
     return NextResponse.json({
       results: messages.map(msg => ({
         id: msg.id,
