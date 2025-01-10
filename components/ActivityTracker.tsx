@@ -2,11 +2,12 @@
 
 import { useEffect } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 
 export function ActivityTracker() {
   const supabase = createClientComponentClient()
   const router = useRouter()
+  const pathname = usePathname()
 
   useEffect(() => {
     let isRedirecting = false
@@ -15,10 +16,16 @@ export function ActivityTracker() {
       try {
         const { data: { user } } = await supabase.auth.getUser()
         
-        // Only redirect if we haven't started redirecting yet
-        if (!user && !isRedirecting) {
+        // Skip activity tracking for signin page
+        if (pathname === '/signin') {
+          return
+        }
+
+        // Only redirect if we haven't started redirecting yet and we're not on signin page
+        if (!user && !isRedirecting && pathname !== '/signin') {
           isRedirecting = true
           router.push('/signin')
+          return
         }
 
         if (user) {
@@ -37,7 +44,7 @@ export function ActivityTracker() {
     return () => {
       clearInterval(interval)
     }
-  }, [supabase, router])
+  }, [supabase, router, pathname])
 
   return null
 } 

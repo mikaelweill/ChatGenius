@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@/lib/supabase'
@@ -16,6 +16,20 @@ export default function SignIn() {
   const codeInputs = useRef<(HTMLInputElement | null)[]>([])
   const router = useRouter()
   const supabase = createBrowserClient()
+  const emailInputRef = useRef<HTMLInputElement>(null)
+  const [lastCodeSentAt, setLastCodeSentAt] = useState<Date | null>(null)
+
+  useEffect(() => {
+    if (emailInputRef.current) {
+      emailInputRef.current.focus()
+    }
+  }, [])
+
+  useEffect(() => {
+    if (showCodeInput && codeInputs.current[0]) {
+      codeInputs.current[0].focus()
+    }
+  }, [showCodeInput])
 
   const handleRequestCode = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -34,12 +48,19 @@ export default function SignIn() {
       })
 
       if (error) {
+        if (error.message.includes('can only request this after')) {
+          setShowCodeInput(true)
+          setMessage("Please use the code we sent you earlier")
+          return
+        }
         setError(error.message)
         return
       }
 
-      setMessage("Check your email for the verification code")
+      setLastCodeSentAt(new Date())
       setShowCodeInput(true)
+      setMessage("Check your email for the verification code")
+      setCode('')
     } catch (error) {
       setError("An error occurred")
     } finally {
@@ -49,7 +70,7 @@ export default function SignIn() {
 
   const handleCodeChange = (index: number, value: string) => {
     if (value.length > 1) {
-      value = value.slice(-1) // Only keep the last character if multiple are pasted
+      value = value.slice(-1)
     }
 
     const newCode = code.split('')
@@ -62,9 +83,13 @@ export default function SignIn() {
       codeInputs.current[index + 1]?.focus()
     }
 
-    // Auto-submit when code is complete (all 6 digits entered)
+    // Auto-submit with the complete code
     if (index === 5 && value && updatedCode.length === 6) {
-      handleVerifyCode(new Event('submit') as any)
+      setTimeout(() => {
+        const e = new Event('submit') as any
+        e.preventDefault = () => {} // Add preventDefault to match form event
+        handleVerifyCode(e, updatedCode) // Pass the complete code
+      }, 300) // Increased delay
     }
   }
 
@@ -74,16 +99,18 @@ export default function SignIn() {
     }
   }
 
-  const handleVerifyCode = async (e: React.FormEvent) => {
+  const handleVerifyCode = async (e: React.FormEvent, directCode?: string) => {
     e.preventDefault()
     setLoading(true)
     setError("")
+
+    const codeToVerify = directCode || code // Use direct code if provided
 
     try {
       // First try email verification (for existing users)
       let { error } = await supabase.auth.verifyOtp({
         email,
-        token: code,
+        token: codeToVerify,
         type: 'email'
       })
 
@@ -91,7 +118,7 @@ export default function SignIn() {
       if (error?.message?.includes('Invalid token')) {
         const signupResult = await supabase.auth.verifyOtp({
           email,
-          token: code,
+          token: codeToVerify,
           type: 'signup'
         })
         error = signupResult.error
@@ -141,6 +168,14 @@ export default function SignIn() {
     }
   }
 
+  const handleBackToEmail = () => {
+    setShowCodeInput(false)
+    // Clear states
+    setCode('')
+    setError('')
+    setMessage('')
+  }
+
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-900">
       <div className="w-full max-w-md space-y-8 p-8 bg-gray-800 rounded-lg shadow-xl">
@@ -153,6 +188,7 @@ export default function SignIn() {
           <form onSubmit={handleRequestCode} className="space-y-6">
             <div>
               <input
+                ref={emailInputRef}
                 type="email"
                 placeholder="Enter your email"
                 value={email}
@@ -206,7 +242,7 @@ export default function SignIn() {
             </button>
             <button
               type="button"
-              onClick={() => setShowCodeInput(false)}
+              onClick={handleBackToEmail}
               className="w-full text-gray-400 hover:text-white text-sm"
             >
               Back to email

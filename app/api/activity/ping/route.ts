@@ -8,7 +8,8 @@ const CHECK_INACTIVE_INTERVAL = 5 // Check every 5th request
 
 export async function POST() {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
+    const cookieStore = await cookies()
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
     const { data: { session } } = await supabase.auth.getSession()
     const userId = session?.user?.id
 
