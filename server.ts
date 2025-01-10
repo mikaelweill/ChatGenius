@@ -261,7 +261,15 @@ app.prepare().then(() => {
           },
         })
 
-        // If this is a reply, we should emit an updated version of the parent message
+        // Join the room (whether channel or DM)
+        socket.join(data.channelId)
+        
+        // Only emit message_received if it's not a reply
+        if (!data.parentId) {
+          io.to(data.channelId).emit('message_received', savedMessage)
+        }
+
+        // If this is a reply, emit updated parent message
         if (data.parentId) {
           const updatedParentMessage = await prisma.message.findUnique({
             where: { id: data.parentId },
@@ -316,13 +324,6 @@ app.prepare().then(() => {
             io.to(data.channelId).emit('message_updated', updatedParentMessage)
           }
         }
-
-        socket.join(data.channelId)
-        // Only emit message_received if it's not a reply
-        if (!data.parentId) {
-          io.to(data.channelId).emit('message_received', savedMessage)
-        }
-        
       } catch (error) {
         console.error('Error processing message:', error)
       }

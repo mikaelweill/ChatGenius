@@ -12,11 +12,12 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
     if (!content.trim() || !isConnected || !socket) return
 
     try {
-      if (isDM) {
-        socket.emit('new_dm_message', { content, chatId: channelId })
-      } else {
-        socket.emit('new_message', { content, channelId })
-      }
+      console.log('Sending message:', { content, channelId, isDM });
+      socket.emit('new_message', { 
+        content, 
+        channelId,
+        isDM 
+      })
       setContent('')
     } catch (error) {
       console.error('Error sending message:', error)

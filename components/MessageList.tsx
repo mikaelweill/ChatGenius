@@ -58,6 +58,7 @@ export function MessageList({ initialMessages, channelId, currentUserId, isDM = 
   // Update message received handler
   useEffect(() => {
     const handleMessageReceived = (message: MessageWithAuthorAndReactions) => {
+      console.log('Message received:', message);
       setMessages(prevMessages => {
         // If this is a reply, we don't add it to the main list
         if (message.parentId) return prevMessages;
@@ -82,25 +83,17 @@ export function MessageList({ initialMessages, channelId, currentUserId, isDM = 
     }
 
     if (socket) {
-      if (isDM) {
-        socket.on('dm_message_received', handleMessageReceived)
-      } else {
-        socket.on('message_received', handleMessageReceived)
-      }
+      socket.on('message_received', handleMessageReceived)
       socket.on('message_updated', handleMessageUpdated)
     }
 
     return () => {
       if (socket) {
-        if (isDM) {
-          socket.off('dm_message_received', handleMessageReceived)
-        } else {
-          socket.off('message_received', handleMessageReceived)
-        }
+        socket.off('message_received', handleMessageReceived)
         socket.off('message_updated', handleMessageUpdated)
       }
     }
-  }, [socket, isDM])
+  }, [socket])
 
   useEffect(() => {
     if (!socket) return
