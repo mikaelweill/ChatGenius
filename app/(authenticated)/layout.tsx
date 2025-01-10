@@ -59,19 +59,21 @@ export default async function AuthenticatedLayout({
   }))
 
   return (
-    <div className="flex h-screen">
-      <aside className="w-64 bg-gray-800 text-white">
+    <div className="flex h-screen overflow-hidden">
+      <aside className="w-64 bg-gray-800 text-white flex flex-col flex-shrink-0">
         <div className="p-4 border-b border-gray-700">
           <h1 className="text-xl font-bold">ChatGenius</h1>
         </div>
-        <ChannelSwitcher 
-          channels={channels}
-          directChats={dms}
-          currentUserId={user.id}
-        />
+        <div className="flex-1 overflow-y-auto">
+          <ChannelSwitcher 
+            channels={channels}
+            directChats={dms}
+            currentUserId={user.id}
+          />
+        </div>
       </aside>
-      <main className="flex-1 flex flex-col">
-        <header className="h-16 border-b flex items-center px-6 gap-4">
+      <main className="flex-1 flex flex-col overflow-hidden">
+        <header className="h-16 border-b flex items-center px-6 gap-4 flex-shrink-0">
           <div className="flex-1 max-w-xl">
             <GlobalSearch userId={user.id} />
           </div>
@@ -79,7 +81,7 @@ export default async function AuthenticatedLayout({
             <LogoutButton userId={user.id} />
           </div>
         </header>
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 overflow-hidden">
           {children}
         </div>
       </main>
