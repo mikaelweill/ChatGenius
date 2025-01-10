@@ -129,7 +129,7 @@ export default function GlobalSearch({ userId }: GlobalSearchProps) {
   }
 
   return (
-    <div className="relative" ref={wrapperRef}>
+    <div className="relative min-w-[200px] w-full max-w-[600px] flex-1" ref={wrapperRef}>
       <div className="relative">
         <input
           type="text"

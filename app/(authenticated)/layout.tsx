@@ -60,9 +60,6 @@ export default async function AuthenticatedLayout({
 
   return (
     <div className="flex h-screen">
-      <div className="absolute top-4 right-4">
-        <LogoutButton userId={user.id} />
-      </div>
       <aside className="w-64 bg-gray-800 text-white">
         <div className="p-4 border-b border-gray-700">
           <h1 className="text-xl font-bold">ChatGenius</h1>
@@ -74,9 +71,12 @@ export default async function AuthenticatedLayout({
         />
       </aside>
       <main className="flex-1 flex flex-col">
-        <header className="h-16 border-b flex items-center px-6 justify-between">
-          <div className="w-1/3">
+        <header className="h-16 border-b flex items-center px-6 gap-4">
+          <div className="flex-1 max-w-xl">
             <GlobalSearch userId={user.id} />
+          </div>
+          <div className="flex-shrink-0">
+            <LogoutButton userId={user.id} />
           </div>
         </header>
         {children}
