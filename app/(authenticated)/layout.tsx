@@ -6,6 +6,7 @@ import { LogoutButton } from '@/components/LogoutButton'
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import GlobalSearch from '@/components/GlobalSearch'
 import { headers } from 'next/headers'
+import MessageInput from '@/components/MessageInput'
 
 // Create a singleton for auth to avoid multiple cookie accesses
 async function getAuthUser() {
@@ -81,8 +82,10 @@ export default async function AuthenticatedLayout({
             <LogoutButton userId={user.id} />
           </div>
         </header>
-        <div className="flex-1 overflow-hidden">
-          {children}
+        <div className="flex-1 overflow-hidden flex flex-col">
+          <div className="flex-1 overflow-y-auto">
+            {children}
+          </div>
         </div>
       </main>
     </div>

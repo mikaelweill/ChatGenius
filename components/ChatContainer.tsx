@@ -59,37 +59,39 @@ export function ChatContainer({
   };
 
   return (
-    <>
+    <div className="h-full relative">
       {headerContent}
       
-      <div className="flex flex-1">
-        <div className="flex-1 flex flex-col">
-          <div className="flex-1 overflow-y-auto">
-            <MessageList 
-              initialMessages={initialMessages} 
-              channelId={channelId}
-              currentUserId={currentUserId}
-              messageIdToScrollTo={messageIdToScrollTo}
-              onThreadOpen={handleThreadOpen}
-            />
-          </div>
-          <div className="sticky bottom-0 z-10 bg-white border-t">
-            <MessageInput channelId={channelId} />
-          </div>
+      {/* Messages Container */}
+      <div className={`absolute inset-0 bottom-[64px] ${openThreadMessage ? 'right-[400px]' : ''}`}>
+        <div className="h-full overflow-y-auto">
+          <MessageList 
+            initialMessages={initialMessages} 
+            channelId={channelId}
+            currentUserId={currentUserId}
+            messageIdToScrollTo={messageIdToScrollTo}
+            onThreadOpen={handleThreadOpen}
+          />
         </div>
-
-        {openThreadMessage && (
-          <div className="w-[400px] border-l bg-white flex-shrink-0">
-            <ThreadPanel 
-              isOpen={true}
-              onClose={() => setOpenThreadMessage(null)}
-              originalMessage={openThreadMessage}
-              channelId={channelId}
-              currentUserId={currentUserId}
-            />
-          </div>
-        )}
       </div>
-    </>
+
+      {/* Fixed Input */}
+      <div className={`absolute bottom-0 left-0 ${openThreadMessage ? 'right-[400px]' : 'right-0'} h-[64px] bg-white border-t`}>
+        <MessageInput channelId={channelId} />
+      </div>
+
+      {/* Thread Panel */}
+      {openThreadMessage && (
+        <div className="absolute top-0 right-0 bottom-0 w-[400px] border-l bg-white">
+          <ThreadPanel 
+            isOpen={true}
+            onClose={() => setOpenThreadMessage(null)}
+            originalMessage={openThreadMessage}
+            channelId={channelId}
+            currentUserId={currentUserId}
+          />
+        </div>
+      )}
+    </div>
   )
 } 
