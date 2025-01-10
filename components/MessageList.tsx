@@ -12,6 +12,7 @@ type MessageWithAuthorAndReactions = Message & {
     name: string | null;
     id: string;
     email: string | null;
+    status: string;
   }
   reactions: (Reaction & {
     user: {
@@ -32,6 +33,7 @@ export function MessageList({ initialMessages, channelId, currentUserId }: Messa
   const containerRef = useRef<HTMLDivElement>(null)
   const session = useContext(SessionContext)
   const [showEmojiPicker, setShowEmojiPicker] = useState<string | null>(null)
+  const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null)
 
   const isNearBottom = () => {
     const container = containerRef.current
@@ -107,6 +109,8 @@ export function MessageList({ initialMessages, channelId, currentUserId }: Messa
   }, [socket])
 
   const handleReaction = (messageId: string, emoji: string) => {
+    if (!socket) return
+    
     socket.emit('add_reaction', {
       messageId,
       emoji,
@@ -129,6 +133,7 @@ export function MessageList({ initialMessages, channelId, currentUserId }: Messa
               <Username 
                 userId={message.authorId}
                 name={message.author.name}
+                status={message.author.status}
               />
               <span className="text-xs text-gray-500 group-hover:opacity-100 opacity-0 transition-opacity">
                 {new Date(message.createdAt).toLocaleTimeString([], { 
@@ -139,7 +144,7 @@ export function MessageList({ initialMessages, channelId, currentUserId }: Messa
             </div>
             <p className="text-gray-700 break-words">{message.content}</p>
             
-            <div className="flex flex-wrap gap-2 mt-2">
+            <div className="flex flex-wrap gap-2 mt-2 relative">
               {Object.entries(
                 (message.reactions || []).reduce((acc, reaction) => {
                   // Group reactions by emoji
@@ -169,26 +174,41 @@ export function MessageList({ initialMessages, channelId, currentUserId }: Messa
               ))}
               
               <button
-                onClick={() => setShowEmojiPicker(message.id)}
-                className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-600"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowEmojiPicker(message.id)
+                }}
+                className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors relative rounded-full"
               >
                 <Smile size={16} />
+                {showEmojiPicker === message.id && (
+                  <div 
+                    className="absolute left-0 top-6 bg-white shadow-lg rounded-lg p-3 z-50 border whitespace-nowrap emoji-picker"
+                    onMouseLeave={(e) => {
+                      const toElement = e.relatedTarget as HTMLElement
+                      if (!toElement?.closest('.emoji-picker')) {
+                        setShowEmojiPicker(null)
+                      }
+                    }}
+                  >
+                    <div className="flex gap-2 px-1">
+                      {["👍", "❤️", "😂", "😮", "😢", "👏"].map(emoji => (
+                        <button
+                          key={emoji}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleReaction(message.id, emoji)
+                          }}
+                          className="p-2 hover:bg-gray-100 rounded text-lg"
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </button>
             </div>
-
-            {showEmojiPicker === message.id && (
-              <div className="absolute mt-2 bg-white shadow-lg rounded-lg p-2">
-                {["👍", "❤️", "😂", "😮", "😢", "👏"].map(emoji => (
-                  <button
-                    key={emoji}
-                    onClick={() => handleReaction(message.id, emoji)}
-                    className="p-1 hover:bg-gray-100 rounded"
-                  >
-                    {emoji}
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
         </div>
       ))}
