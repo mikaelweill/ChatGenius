@@ -1,6 +1,6 @@
 'use client'
 
-import { X } from 'lucide-react'
+import { X, Smile } from 'lucide-react'
 import { Message, Reaction } from '@prisma/client'
 import { useState, useEffect } from 'react'
 import { useSocket } from '@/hooks/useSocket'
@@ -28,11 +28,20 @@ type MessageWithAuthorAndReactions = {
     }
   })[]
   replies: (Message & {
+    id: string
+    content: string
+    createdAt: Date
     author: {
       id: string
       name: string | null
       status: string
     }
+    reactions: (Reaction & {
+      user: {
+        id: string
+        name: string | null
+      }
+    })[]
   })[]
 }
 
@@ -47,6 +56,7 @@ interface ThreadPanelProps {
 export function ThreadPanel({ isOpen, onClose, originalMessage, channelId, currentUserId }: ThreadPanelProps) {
   const [message, setMessage] = useState<MessageWithAuthorAndReactions | null>(null)
   const [mainReplyContent, setMainReplyContent] = useState('')
+  const [showEmojiPicker, setShowEmojiPicker] = useState<string | null>(null)
   const { socket, isConnected } = useSocket({ channelId })
   
   // Update message when originalMessage changes
@@ -67,10 +77,83 @@ export function ThreadPanel({ isOpen, onClose, originalMessage, channelId, curre
       }
     }
 
+    const handleReactionAdded = ({ messageId, reaction }: { messageId: string, reaction: Reaction & { user: { id: string, name: string | null } } }) => {
+      console.log('Reaction added:', { messageId, reaction });
+      console.log('Current message:', message);
+      
+      setMessage(prev => {
+        if (!prev) {
+          console.log('No previous message state');
+          return prev;
+        }
+        
+        // Check if it's the main message
+        if (prev.id === messageId) {
+          console.log('Updating main message reaction');
+          return {
+            ...prev,
+            reactions: [...prev.reactions, reaction]
+          }
+        }
+        
+        // Check if it's a reply
+        if (prev.replies) {
+          console.log('Checking replies for reaction update');
+          const updatedMessage = {
+            ...prev,
+            replies: prev.replies.map(reply => {
+              if (reply.id === messageId) {
+                console.log('Found matching reply:', reply.id);
+                return { ...reply, reactions: [...(reply.reactions || []), reaction] }
+              }
+              return reply;
+            })
+          };
+          console.log('Updated message:', updatedMessage);
+          return updatedMessage;
+        }
+        
+        console.log('No matching message or reply found');
+        return prev;
+      });
+    }
+
+    const handleReactionRemoved = ({ messageId, reactionId }: { messageId: string, reactionId: string }) => {
+      setMessage(prev => {
+        if (!prev) return prev;
+        
+        // Check if it's the main message
+        if (prev.id === messageId) {
+          return {
+            ...prev,
+            reactions: prev.reactions.filter(r => r.id !== reactionId)
+          }
+        }
+        
+        // Check if it's a reply
+        if (prev.replies) {
+          return {
+            ...prev,
+            replies: prev.replies.map(reply => 
+              reply.id === messageId 
+                ? { ...reply, reactions: (reply.reactions || []).filter(r => r.id !== reactionId) }
+                : reply
+            )
+          }
+        }
+        
+        return prev;
+      });
+    }
+
     socket.on('message_updated', handleMessageUpdated)
+    socket.on('reaction_added', handleReactionAdded)
+    socket.on('reaction_removed', handleReactionRemoved)
 
     return () => {
       socket.off('message_updated', handleMessageUpdated)
+      socket.off('reaction_added', handleReactionAdded)
+      socket.off('reaction_removed', handleReactionRemoved)
     }
   }, [socket, message?.id])
 
@@ -96,6 +179,42 @@ export function ThreadPanel({ isOpen, onClose, originalMessage, channelId, curre
     e.preventDefault()
     handleSubmitReply(mainReplyContent)
     setMainReplyContent('')
+  }
+
+  const handleReaction = (messageId: string, emoji: string) => {
+    if (!socket) return
+    socket.emit('add_reaction', {
+      messageId,
+      emoji,
+      channelId
+    })
+    setShowEmojiPicker(null)
+  }
+
+  const renderReactions = (messageId: string, reactions: (Reaction & { user: { id: string, name: string | null } })[]) => {
+    const reactionCounts: { [key: string]: { count: number, users: string[] } } = {}
+    reactions.forEach(reaction => {
+      if (!reactionCounts[reaction.emoji]) {
+        reactionCounts[reaction.emoji] = { count: 0, users: [] }
+      }
+      reactionCounts[reaction.emoji].count++
+      reactionCounts[reaction.emoji].users.push(reaction.user.name || 'Anonymous')
+    })
+
+    return (
+      <div className="flex flex-wrap gap-2 mt-2">
+        {Object.entries(reactionCounts).map(([emoji, { count, users }]) => (
+          <button
+            key={emoji}
+            onClick={() => handleReaction(messageId, emoji)}
+            className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 rounded-full text-sm hover:bg-gray-200 transition-colors"
+            title={users.join(', ')}
+          >
+            {emoji} <span className="text-gray-600">{count}</span>
+          </button>
+        ))}
+      </div>
+    )
   }
 
   return (
@@ -129,6 +248,51 @@ export function ThreadPanel({ isOpen, onClose, originalMessage, channelId, curre
           </div>
         </div>
         <p className="text-gray-700">{message.content}</p>
+        <div className="flex items-center gap-2 mt-2">
+          <div className="relative">
+            <button
+              onClick={() => setShowEmojiPicker(message.id)}
+              className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded-full"
+            >
+              <Smile size={16} />
+            </button>
+            {showEmojiPicker === message.id && (
+              <div 
+                className="absolute left-0 top-full mt-1 bg-white shadow-lg rounded-lg p-2 z-50 border whitespace-nowrap emoji-picker"
+                onMouseLeave={(e) => {
+                  const toElement = e.relatedTarget as HTMLElement
+                  if (!toElement?.closest('.emoji-picker')) {
+                    setShowEmojiPicker(null)
+                  }
+                }}
+              >
+                <div className="flex gap-2">
+                  {["👍", "❤️", "😂", "😮", "😢", "👏"].map(emoji => (
+                    <div
+                      key={emoji}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleReaction(message.id, emoji)
+                      }}
+                      className="p-2 hover:bg-gray-100 rounded text-lg cursor-pointer"
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          handleReaction(message.id, emoji)
+                        }
+                      }}
+                    >
+                      {emoji}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          {renderReactions(message.id, message.reactions)}
+        </div>
       </div>
 
       {/* Scrollable Content */}
@@ -152,6 +316,51 @@ export function ThreadPanel({ isOpen, onClose, originalMessage, channelId, curre
                   </span>
                 </div>
                 <p className="text-gray-700">{reply.content}</p>
+                <div className="flex items-center gap-2 mt-2">
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowEmojiPicker(reply.id)}
+                      className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded-full"
+                    >
+                      <Smile size={16} />
+                    </button>
+                    {showEmojiPicker === reply.id && (
+                      <div 
+                        className="absolute left-0 top-full mt-1 bg-white shadow-lg rounded-lg p-2 z-50 border whitespace-nowrap emoji-picker"
+                        onMouseLeave={(e) => {
+                          const toElement = e.relatedTarget as HTMLElement
+                          if (!toElement?.closest('.emoji-picker')) {
+                            setShowEmojiPicker(null)
+                          }
+                        }}
+                      >
+                        <div className="flex gap-2">
+                          {["👍", "❤️", "😂", "😮", "😢", "👏"].map(emoji => (
+                            <div
+                              key={emoji}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleReaction(reply.id, emoji)
+                              }}
+                              className="p-2 hover:bg-gray-100 rounded text-lg cursor-pointer"
+                              role="button"
+                              tabIndex={0}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault()
+                                  handleReaction(reply.id, emoji)
+                                }
+                              }}
+                            >
+                              {emoji}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  {renderReactions(reply.id, reply.reactions || [])}
+                </div>
               </div>
             </div>
           ))}
