@@ -409,14 +409,16 @@ app.prepare().then(() => {
     })
 
     socket.on("user_signup", async (data) => {
-      // console.log("New user signup event received:", data);
-    
+      console.log("New user signup event received:", data);
+
       try {
+        // Fetch all existing users except the new user
         const existingUsers = await prisma.user.findMany({
           where: { id: { not: data.userId } },
           select: { id: true },
         });
-    
+
+        // Create DMs with all existing users
         const createDMs = existingUsers.map((existingUser) =>
           prisma.directChat.create({
             data: {
@@ -429,16 +431,15 @@ app.prepare().then(() => {
             },
           })
         );
-    
+
         await Promise.all(createDMs);
-    
-        // console.log(
-        //   `DMs created between new user ${data.userId} and existing users`
-        // );
-    
-        existingUsers.forEach((existingUser) => {
-          io.to(existingUser.id).emit("dm_created", { newUserId: data.userId });
-        });
+
+        console.log(
+          `DMs created between new user ${data.userId} and existing users`
+        );
+
+        // Broadcast to all clients that a new user has signed up
+        io.emit("dm_created", { newUserId: data.userId });
       } catch (error) {
         console.error("Error creating DMs for new user:", error);
       }
@@ -486,6 +487,24 @@ app.prepare().then(() => {
 
     socket.on('add_reaction', async ({ messageId, emoji, channelId }) => {
       try {
+        // First find the message to determine if it's a DM or channel message
+        const message = await prisma.message.findUnique({
+          where: { id: messageId },
+          select: { channelId: true, directChatId: true }
+        });
+
+        if (!message) {
+          console.error('Message not found for reaction');
+          return;
+        }
+
+        // Ensure we have a valid room ID
+        const roomId = message.channelId || message.directChatId;
+        if (!roomId) {
+          console.error('No valid room ID found for message:', messageId);
+          return;
+        }
+
         // Check if THIS user already reacted with this emoji
         const existingReaction = await prisma.reaction.findFirst({
           where: {
@@ -501,7 +520,8 @@ app.prepare().then(() => {
             where: { id: existingReaction.id }
           })
 
-          io.to(channelId).emit('reaction_removed', {
+          // Emit to the correct room (channel or DM)
+          io.to(roomId).emit('reaction_removed', {
             messageId,
             reactionId: existingReaction.id
           })
@@ -516,14 +536,15 @@ app.prepare().then(() => {
             include: {
               user: {
                 select: {
-                  id: true,  // Add this to identify who reacted
+                  id: true,
                   name: true
                 }
               }
             }
           })
 
-          io.to(channelId).emit('reaction_added', {
+          // Emit to the correct room (channel or DM)
+          io.to(roomId).emit('reaction_added', {
             messageId,
             reaction
           })

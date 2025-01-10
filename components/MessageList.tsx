@@ -203,11 +203,12 @@ export function MessageList({ initialMessages, channelId, currentUserId, isDM = 
                   </button>
                   {showEmojiPicker === message.id && (
                     <div 
-                      className="fixed bg-white shadow-lg rounded-lg p-3 border whitespace-nowrap emoji-picker"
+                      className="absolute bg-white shadow-lg rounded-lg p-3 border whitespace-nowrap emoji-picker"
                       style={{ 
                         minWidth: '200px',
                         zIndex: 100,
-                        transform: 'translateY(0.5rem)',
+                        top: '100%',
+                        left: '0',
                       }}
                       onMouseLeave={(e) => {
                         const toElement = e.relatedTarget as HTMLElement
