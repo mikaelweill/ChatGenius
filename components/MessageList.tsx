@@ -8,6 +8,7 @@ import { SessionContext } from '@/components/SessionProvider'
 import { Smile, MessageSquare } from 'lucide-react'
 import { MessageWithAuthorAndReactions } from '@/types/message'
 import { FileDropZone } from './FileDropZone'
+import { eventBus } from '@/lib/eventBus'
 
 interface MessageListProps {
   initialMessages: MessageWithAuthorAndReactions[]
@@ -154,8 +155,7 @@ export function MessageList({ initialMessages, channelId, currentUserId, isDM = 
   }, [messageIdToScrollTo]);
 
   const handleFileDrop = (file: File) => {
-    console.log('File dropped in MessageList:', file)
-    // We'll implement upload logic in next step
+    eventBus.emitFileDrop(file);
   }
 
   return (

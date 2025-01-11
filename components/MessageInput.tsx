@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useSocket } from '@/hooks/useSocket'
 import { FileDropZone } from './FileDropZone'
 import { uploadFile } from '@/lib/uploadUtils'
+import { eventBus } from '@/lib/eventBus'
 
 interface UploadState {
   progress: number;
@@ -78,6 +79,14 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
   const clearUploadedFile = () => {
     setUploadedFile(null)
   }
+
+  useEffect(() => {
+    const unsubscribe = eventBus.onFileDrop((file) => {
+      handleFileSelect(file);
+    });
+
+    return () => unsubscribe();
+  }, []);  // Empty deps since handleFileSelect is stable
 
   return (
     <FileDropZone onFileDrop={handleFileDrop}>
