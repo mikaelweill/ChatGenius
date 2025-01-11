@@ -197,11 +197,19 @@ app.prepare().then(() => {
           directChatId?: string;
           channelId?: string;
           parentId?: string;
+          attachments?: {  // Make attachments optional with ?
+            create: {
+              url: string;
+              type: string;
+              name: string;
+            }
+          }
         } = {
           content: data.content,
           authorId: socket.data.userId,
         }
 
+        // Set channel type (DM or regular)
         if (data.isDM) {
           messageData.directChatId = data.channelId
         } else {
@@ -210,8 +218,18 @@ app.prepare().then(() => {
 
         // Add parentId if it exists (for thread replies)
         if (data.parentId) {
-          console.log('Setting parentId:', data.parentId);
           messageData.parentId = data.parentId
+        }
+
+        // Add attachment if it exists
+        if (data.attachment) {
+          messageData.attachments = {
+            create: {
+              url: data.attachment.url,
+              type: data.attachment.type,
+              name: data.attachment.name
+            }
+          }
         }
 
         console.log('Final message data:', messageData);
@@ -227,6 +245,7 @@ app.prepare().then(() => {
                 status: true
               },
             },
+            attachments: true,  // Changed from attachment to attachments
             reactions: {
               include: {
                 user: {
