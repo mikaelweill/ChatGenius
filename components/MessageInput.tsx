@@ -72,12 +72,23 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
     }
   }
 
-  const handleFileDrop = (file: File) => {
-    handleFileSelect(file)
-  }
+  const handleFileButtonClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      eventBus.emitFileDrop(file);
+    }
+  };
 
   const clearUploadedFile = () => {
-    setUploadedFile(null)
+    setUploadedFile(null);
+    // Clear the actual file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   }
 
   useEffect(() => {
@@ -123,7 +134,7 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
         )}
       </div>
 
-      <FileDropZone onFileDrop={handleFileDrop}>
+      <FileDropZone onFileDrop={(file) => eventBus.emitFileDrop(file)}>
         <form onSubmit={handleSubmit} className="p-4 border-t bg-white">
           <div className="flex gap-2">
             <input
@@ -138,11 +149,11 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
               type="file"
               ref={fileInputRef}
               className="hidden"
-              onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
+              onChange={handleFileInputChange}
             />
             <button
               type="button"
-              onClick={() => fileInputRef.current?.click()}
+              onClick={handleFileButtonClick}
               className="px-3 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
               disabled={uploadState?.status === 'uploading' || uploadedFile !== null}
             >
