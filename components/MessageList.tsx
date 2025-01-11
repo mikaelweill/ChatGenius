@@ -5,7 +5,7 @@ import { useSocket } from '@/hooks/useSocket'
 import { Message, Reaction } from '@prisma/client'
 import { Username } from './Username'
 import { SessionContext } from '@/components/SessionProvider'
-import { Smile, MessageSquare } from 'lucide-react'
+import { Smile, MessageSquare, Download } from 'lucide-react'
 import { MessageWithAuthorAndReactions } from '@/types/message'
 import { FileDropZone } from './FileDropZone'
 import { eventBus } from '@/lib/eventBus'
@@ -37,6 +37,24 @@ const getFileIcon = (fileType: string): string => {
   if (fileType === 'text/plain') return '📄';
   if (fileType.includes('word')) return '📝';
   return '📎'; // Default icon
+};
+
+const handleDownload = async (url: string, fileName: string) => {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(blobUrl);
+  } catch (error) {
+    console.error('Error downloading file:', error);
+  }
 };
 
 export function MessageList({ initialMessages, channelId, currentUserId, isDM = false, messageIdToScrollTo, onThreadOpen }: MessageListProps) {
@@ -282,22 +300,31 @@ export function MessageList({ initialMessages, channelId, currentUserId, isDM = 
                     </div>
                   ) : (
                     // Other file types
-                    <a
-                      href={attachmentUrls[attachment.id]}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
-                    >
+                    <div className="flex items-center gap-2 p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
                       <div className="text-2xl">{getFileIcon(attachment.type)}</div>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium text-gray-700 truncate">
                           {attachment.name}
                         </div>
-                        <div className="text-xs text-gray-500">
-                          {attachment.type}
+                        <div className="text-xs text-gray-500 flex items-center gap-2">
+                          <span>{attachment.type}</span>
                         </div>
                       </div>
-                    </a>
+                      <a
+                        href="#"
+                        className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-full"
+                        title="Download file"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (attachmentUrls[attachment.id]) {
+                            handleDownload(attachmentUrls[attachment.id], attachment.name);
+                          }
+                        }}
+                      >
+                        <Download size={16} />
+                      </a>
+                    </div>
                   )}
                 </div>
               ))}
