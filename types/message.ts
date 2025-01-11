@@ -1,4 +1,4 @@
-import { Message, Reaction } from '@prisma/client'
+import { Message, Reaction, Attachment } from '@prisma/client'
 
 type ReplyMessage = {
   id: string
@@ -20,6 +20,7 @@ type ReplyMessage = {
       name: string | null
     }
   })[]
+  attachments: Attachment[]
 }
 
 export type MessageWithAuthorAndReactions = {
@@ -44,4 +45,5 @@ export type MessageWithAuthorAndReactions = {
     }
   })[]
   replies: ReplyMessage[]
+  attachments: Attachment[]
 } 

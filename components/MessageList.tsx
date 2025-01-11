@@ -9,6 +9,7 @@ import { Smile, MessageSquare } from 'lucide-react'
 import { MessageWithAuthorAndReactions } from '@/types/message'
 import { FileDropZone } from './FileDropZone'
 import { eventBus } from '@/lib/eventBus'
+import { getPresignedViewUrl } from '@/lib/s3'
 
 interface MessageListProps {
   initialMessages: MessageWithAuthorAndReactions[]
@@ -195,6 +196,39 @@ export function MessageList({ initialMessages, channelId, currentUserId, isDM = 
                 </span>
               </div>
               <p className="text-gray-700 break-words">{message.content}</p>
+              
+              {message.attachments?.map(attachment => (
+                <div key={attachment.id} className="mt-2 max-w-sm">
+                  {attachment.type.startsWith('image/') ? (
+                    // Image attachments
+                    <div className="rounded-lg overflow-hidden border border-gray-200">
+                      <img 
+                        src={attachment.url} 
+                        alt={attachment.name}
+                        className="max-w-full h-auto"
+                      />
+                    </div>
+                  ) : (
+                    // Other file types
+                    <a
+                      href={attachment.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="text-2xl">📎</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-gray-700 truncate">
+                          {attachment.name}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {attachment.type}
+                        </div>
+                      </div>
+                    </a>
+                  )}
+                </div>
+              ))}
               
               <div className="flex items-center gap-2 mt-2">
                 <div className="flex items-center space-x-1.5">

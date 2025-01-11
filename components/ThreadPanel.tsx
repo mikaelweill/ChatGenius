@@ -40,8 +40,8 @@ export function ThreadPanel({ isOpen, onClose, originalMessage, channelId, curre
     }
 
     const handleReactionAdded = ({ messageId, reaction }: { messageId: string, reaction: Reaction & { user: { id: string, name: string | null } } }) => {
-      console.log('Reaction added:', { messageId, reaction });
-      console.log('Current message:', message);
+      // console.log('Reaction added:', { messageId, reaction });
+      // console.log('Current message:', message);
       
       setMessage(prev => {
         if (!prev) {

@@ -16,6 +16,7 @@ export async function getMessages(chatId: string, isDM: boolean = false): Promis
           status: true
         }
       },
+      attachments: true,
       reactions: {
         include: {
           user: {
@@ -52,6 +53,12 @@ export async function getMessages(chatId: string, isDM: boolean = false): Promis
       createdAt: 'asc'
     }
   }) as MessageWithAuthorAndReactions[]
+
+  console.log('Initial messages from server:', messages.map(m => ({
+    id: m.id,
+    content: m.content,
+    attachments: m.attachments
+  })));
 
   return messages
 } 

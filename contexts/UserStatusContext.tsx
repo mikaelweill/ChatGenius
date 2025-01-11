@@ -25,13 +25,13 @@ export function UserStatusProvider({ children }: { children: React.ReactNode }) 
   const { socket, isConnected } = useSocket({})
   const userId = TokenManager.getUserId()
 
-  useEffect(() => {
-    console.log('=== Status Debug ===')
-    console.log('Current statuses:', statuses)
-    console.log('Current user:', userId)
-    console.log('Socket connected:', isConnected)
-    console.log('Socket ID:', socket?.id)
-  }, [statuses, userId, isConnected, socket])
+  // useEffect(() => {
+  //   console.log('=== Status Debug ===')
+  //   console.log('Current statuses:', statuses)
+  //   console.log('Current user:', userId)
+  //   console.log('Socket connected:', isConnected)
+  //   console.log('Socket ID:', socket?.id)
+  // }, [statuses, userId, isConnected, socket])
 
   // Debug socket state
   useEffect(() => {

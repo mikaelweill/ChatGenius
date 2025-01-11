@@ -1,5 +1,9 @@
-import { getChannelData } from "./ChannelPageServer"
+import { getMessages } from "@/components/MessageListServer"
 import { ChatContainer } from "@/components/ChatContainer"
+import { prisma } from "@/lib/prisma"
+import { cookies } from "next/headers"
+import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
+import { redirect } from "next/navigation"
 
 interface ChannelPageProps {
   params: Promise<{ channelName: string }>
@@ -12,7 +16,26 @@ export default async function ChannelPage({ params, searchParams }: ChannelPageP
   const { channelName } = resolvedParams;
   const messageId = resolvedSearchParams.messageId;
 
-  const { user, currentChannel, initialMessages } = await getChannelData(channelName)
+  // Get auth user
+  const cookieStore = cookies()
+  const supabase = createServerComponentClient({ 
+    cookies: () => cookieStore 
+  })
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    redirect('/signin')
+  }
+
+  // Get the current channel
+  const currentChannel = await prisma.channel.findFirst({
+    where: { name: channelName }
+  })
+  if (!currentChannel) {
+    redirect('/channels/general')
+  }
+
+  // Get messages using MessageListServer
+  const initialMessages = await getMessages(currentChannel.id, false)
 
   return (
     <div className="relative h-full">

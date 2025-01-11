@@ -31,14 +31,14 @@ export function ChannelSwitcher({ channels, directChats, currentUserId }: Channe
     e.preventDefault()
     if (!newChannelName.trim() || isDuplicateName) return
 
-    console.log('Attempting to create channel:', newChannelName)
+    //console.log('Attempting to create channel:', newChannelName)
     createChannel(newChannelName)
     setNewChannelName('')
     setIsCreating(false)
   }
 
   const handleDeleteChannel = async (channel: Channel) => {
-    console.log('Attempting to delete channel:', { id: channel.id, name: channel.name })
+    //console.log('Attempting to delete channel:', { id: channel.id, name: channel.name })
     deleteChannel(channel.id)
   }
 

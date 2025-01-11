@@ -70,13 +70,13 @@ const getSocket = (userId: string) => {
   })
 
   // Debug all socket events
-  sharedSocket.onAny((eventName, ...args) => {
-    console.log('=== Client Socket Event ===', {
-      event: eventName,
-      args,
-      socketId: sharedSocket?.id
-    })
-  })
+  // sharedSocket.onAny((eventName, ...args) => {
+  //   console.log('=== Client Socket Event ===', {
+  //     event: eventName,
+  //     args,
+  //     socketId: sharedSocket?.id
+  //   })
+  // })
 
   sharedSocket.on('connect_error', (error) => {
     console.log('Socket connect error:', {

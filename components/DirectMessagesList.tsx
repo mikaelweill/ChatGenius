@@ -27,7 +27,7 @@ export function DirectMessagesList({
     return () => clearInterval(interval)
   }, [router])
 
-  console.log('DirectMessagesList received:', directChats)
+  //console.log('DirectMessagesList received:', directChats)
 
   return (
     <div className="space-y-2">

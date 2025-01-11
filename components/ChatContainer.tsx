@@ -27,7 +27,7 @@ export function ChatContainer({
   const [openThreadMessage, setOpenThreadMessage] = useState<MessageWithAuthorAndReactions | null>(null)
 
   const handleThreadOpen = (message: MessageWithAuthorAndReactions) => {
-    console.log('handleThreadOpen called with message:', message);
+    //console.log('handleThreadOpen called with message:', message);
     setOpenThreadMessage(message);
   };
 
