@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useRef, DragEvent } from 'react'
+import { useState, useRef } from 'react'
 import { useSocket } from '@/hooks/useSocket'
+import { FileDropZone } from './FileDropZone'
 
 export function MessageInput({ channelId, isDM = false }: { channelId: string, isDM?: boolean }) {
   const [content, setContent] = useState('')
-  const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { socket, isConnected } = useSocket({ channelId })
 
@@ -13,27 +13,6 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
   const handleFileSelect = (file: File) => {
     console.log('File selected:', file)
     // We'll implement upload logic in next step
-  }
-
-  // Drag and drop handlers
-  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    setIsDragging(true)
-  }
-
-  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    setIsDragging(false)
-  }
-
-  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    setIsDragging(false)
-    
-    const file = e.dataTransfer.files[0]
-    if (file) {
-      handleFileSelect(file)
-    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -53,14 +32,14 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
     }
   }
 
+  const handleFileDrop = (file: File) => {
+    console.log('File dropped in MessageInput:', file)
+    handleFileSelect(file) // Reuse existing handleFileSelect
+  }
+
   return (
-    <form onSubmit={handleSubmit} className="p-4 border-t bg-white">
-      <div 
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        className={`flex flex-col gap-2 ${isDragging ? 'bg-indigo-50 border-2 border-dashed border-indigo-300 rounded-lg p-2' : ''}`}
-      >
+    <FileDropZone onFileDrop={handleFileDrop}>
+      <form onSubmit={handleSubmit} className="p-4 border-t bg-white">
         <div className="flex gap-2">
           <input
             type="text"
@@ -91,7 +70,7 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
             Send
           </button>
         </div>
-      </div>
-    </form>
+      </form>
+    </FileDropZone>
   )
 } 
