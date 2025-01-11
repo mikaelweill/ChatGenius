@@ -75,10 +75,10 @@ export default async function AuthenticatedLayout({
       </aside>
       <main className="flex-1 flex flex-col overflow-hidden">
         <header className="h-16 border-b flex items-center px-6 gap-4 flex-shrink-0">
-          <div className="flex-1 max-w-xl">
+          <div className="flex-1">
             <GlobalSearch userId={user.id} />
           </div>
-          <div className="flex-shrink-0">
+          <div className="ml-auto">
             <LogoutButton userId={user.id} />
           </div>
         </header>
