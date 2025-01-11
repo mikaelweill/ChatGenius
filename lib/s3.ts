@@ -39,4 +39,38 @@ export async function getPresignedViewUrl(fileKey: string) {
     });
 
     return await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+}
+
+// File type validation
+export const allowedFileTypes = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'application/pdf',
+  'text/plain',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+]);
+
+// Max file size (10MB)
+export const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
+// Validate file
+export function validateFile(file: File): { isValid: boolean; error?: string } {
+  if (!allowedFileTypes.has(file.type)) {
+    return { isValid: false, error: 'File type not supported' };
+  }
+  
+  if (file.size > MAX_FILE_SIZE) {
+    return { isValid: false, error: 'File size exceeds 10MB limit' };
+  }
+  
+  return { isValid: true };
+}
+
+// Get human readable file size
+export function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 } 
