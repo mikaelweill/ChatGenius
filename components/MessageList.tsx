@@ -9,7 +9,6 @@ import { Smile, MessageSquare } from 'lucide-react'
 import { MessageWithAuthorAndReactions } from '@/types/message'
 import { FileDropZone } from './FileDropZone'
 import { eventBus } from '@/lib/eventBus'
-import { getPresignedViewUrl } from '@/lib/s3'
 
 interface MessageListProps {
   initialMessages: MessageWithAuthorAndReactions[]
@@ -18,6 +17,17 @@ interface MessageListProps {
   isDM?: boolean
   messageIdToScrollTo?: string
   onThreadOpen?: (message: MessageWithAuthorAndReactions) => void
+}
+
+interface Attachment {
+  id: string;
+  url: string;
+  name: string;
+  type: string;
+}
+
+interface AttachmentWithUrl extends Attachment {
+  presignedUrl?: string;
 }
 
 export function MessageList({ initialMessages, channelId, currentUserId, isDM = false, messageIdToScrollTo, onThreadOpen }: MessageListProps) {
@@ -29,6 +39,7 @@ export function MessageList({ initialMessages, channelId, currentUserId, isDM = 
   const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null)
   const shouldAutoScroll = useRef(true)
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null)
+  const [attachmentUrls, setAttachmentUrls] = useState<Record<string, string>>({});
 
   const isNearBottom = () => {
     const container = containerRef.current
@@ -159,6 +170,28 @@ export function MessageList({ initialMessages, channelId, currentUserId, isDM = 
     eventBus.emitFileDrop(file);
   }
 
+  // Update the effect to use fetch instead of getPresignedViewUrl
+  useEffect(() => {
+    messages.forEach(message => {
+      message.attachments?.forEach(async (attachment) => {
+        if (!attachmentUrls[attachment.id]) {
+          try {
+            const response = await fetch(`/api/presigned-url?fileKey=${encodeURIComponent(attachment.url)}`);
+            const data = await response.json();
+            if (data.url) {
+              setAttachmentUrls(prev => ({
+                ...prev,
+                [attachment.id]: data.url
+              }));
+            }
+          } catch (error) {
+            console.error('Error getting presigned URL:', error);
+          }
+        }
+      });
+    });
+  }, [messages, attachmentUrls]);
+
   return (
     <FileDropZone onFileDrop={handleFileDrop} className="flex-1">
       <div 
@@ -202,16 +235,22 @@ export function MessageList({ initialMessages, channelId, currentUserId, isDM = 
                   {attachment.type.startsWith('image/') ? (
                     // Image attachments
                     <div className="rounded-lg overflow-hidden border border-gray-200">
-                      <img 
-                        src={attachment.url} 
-                        alt={attachment.name}
-                        className="max-w-full h-auto"
-                      />
+                      {attachmentUrls[attachment.id] ? (
+                        <img 
+                          src={attachmentUrls[attachment.id]} 
+                          alt={attachment.name}
+                          className="max-w-full h-auto"
+                        />
+                      ) : (
+                        <div className="h-32 flex items-center justify-center bg-gray-50">
+                          <span className="text-gray-400">Loading image...</span>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     // Other file types
                     <a
-                      href={attachment.url}
+                      href={attachmentUrls[attachment.id]}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
