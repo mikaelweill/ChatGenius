@@ -52,8 +52,8 @@ export const allowedFileTypes = new Set([
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 ]);
 
-// Max file size (10MB)
-export const MAX_FILE_SIZE = 10 * 1024 * 1024;
+// Max file size (25MB)
+export const MAX_FILE_SIZE = 25 * 1024 * 1024;
 
 // Validate file
 export function validateFile(file: File): { isValid: boolean; error?: string } {
@@ -62,7 +62,7 @@ export function validateFile(file: File): { isValid: boolean; error?: string } {
   }
   
   if (file.size > MAX_FILE_SIZE) {
-    return { isValid: false, error: 'File size exceeds 10MB limit' };
+    return { isValid: false, error: 'File size exceeds 25MB limit' };
   }
   
   return { isValid: true };
