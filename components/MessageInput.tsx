@@ -89,64 +89,75 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
   }, []);  // Empty deps since handleFileSelect is stable
 
   return (
-    <FileDropZone onFileDrop={handleFileDrop}>
-      <form onSubmit={handleSubmit} className="p-4 border-t bg-white">
+    <div className="relative">
+      <div className="absolute bottom-full w-full pb-2">
         {uploadState && uploadState.status === 'uploading' && (
-          <div className="mb-2 text-sm text-gray-600">
-            Uploading... {Math.round(uploadState.progress)}%
+          <div className="bg-white p-2 rounded-t-lg shadow-sm border border-b-0">
+            <div className="text-sm text-gray-600">
+              Uploading... {Math.round(uploadState.progress)}%
+            </div>
           </div>
         )}
         {uploadState?.status === 'error' && (
-          <div className="mb-2 text-sm text-red-600">
-            {uploadState.error}
+          <div className="bg-white p-2 rounded-t-lg shadow-sm border border-b-0">
+            <div className="text-sm text-red-600">
+              {uploadState.error}
+            </div>
           </div>
         )}
         {uploadedFile && (
-          <div className="mb-2 flex items-center gap-2 bg-gray-50 p-2 rounded-lg">
-            <span className="text-sm text-gray-600">
-              Ready to send: {uploadedFile.fileName}
-            </span>
-            <button
-              type="button"
-              onClick={clearUploadedFile}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              ✕
-            </button>
+          <div className="bg-white p-2 rounded-t-lg shadow-sm border border-b-0">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">
+                Ready to send: {uploadedFile.fileName}
+              </span>
+              <button
+                type="button"
+                onClick={clearUploadedFile}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
           </div>
         )}
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder={uploadedFile ? "Add a message (optional)" : "Type a message..."}
-            className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            disabled={!isConnected || uploadState?.status === 'uploading'}
-          />
-          <input
-            type="file"
-            ref={fileInputRef}
-            className="hidden"
-            onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
-          />
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="px-3 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
-            disabled={uploadState?.status === 'uploading' || uploadedFile !== null}
-          >
-            📎
-          </button>
-          <button
-            type="submit"
-            disabled={!isConnected || (!content.trim() && !uploadedFile) || uploadState?.status === 'uploading'}
-            className="px-6 py-2 bg-indigo-500 text-white rounded-lg font-medium hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            Send
-          </button>
-        </div>
-      </form>
-    </FileDropZone>
+      </div>
+
+      <FileDropZone onFileDrop={handleFileDrop}>
+        <form onSubmit={handleSubmit} className="p-4 border-t bg-white">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder={uploadedFile ? "Add a message (optional)" : "Type a message..."}
+              className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              disabled={!isConnected || uploadState?.status === 'uploading'}
+            />
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="px-3 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
+              disabled={uploadState?.status === 'uploading' || uploadedFile !== null}
+            >
+              📎
+            </button>
+            <button
+              type="submit"
+              disabled={!isConnected || (!content.trim() && !uploadedFile) || uploadState?.status === 'uploading'}
+              className="px-6 py-2 bg-indigo-500 text-white rounded-lg font-medium hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Send
+            </button>
+          </div>
+        </form>
+      </FileDropZone>
+    </div>
   )
 } 
