@@ -46,10 +46,12 @@ export const allowedFileTypes = new Set([
   'image/jpeg',
   'image/png',
   'image/gif',
+  'image/webp',
   'application/pdf',
   'text/plain',
   'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'audio/mpeg'  // MP3 files
 ]);
 
 // Max file size (25MB)

@@ -30,6 +30,15 @@ interface AttachmentWithUrl extends Attachment {
   presignedUrl?: string;
 }
 
+const getFileIcon = (fileType: string): string => {
+  if (fileType.startsWith('image/')) return '🖼️';
+  if (fileType === 'audio/mpeg') return '🎵';
+  if (fileType === 'application/pdf') return '📑';
+  if (fileType === 'text/plain') return '📄';
+  if (fileType.includes('word')) return '📝';
+  return '📎'; // Default icon
+};
+
 export function MessageList({ initialMessages, channelId, currentUserId, isDM = false, messageIdToScrollTo, onThreadOpen }: MessageListProps) {
   const [messages, setMessages] = useState<MessageWithAuthorAndReactions[]>(initialMessages)
   const { socket, isConnected } = useSocket({ channelId })
@@ -247,6 +256,30 @@ export function MessageList({ initialMessages, channelId, currentUserId, isDM = 
                         </div>
                       )}
                     </div>
+                  ) : attachment.type === 'audio/mpeg' ? (
+                    // Audio attachments
+                    <div className="rounded-lg border border-gray-200 p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="text-2xl">🎵</div>
+                        <div className="text-sm font-medium text-gray-700 truncate">
+                          {attachment.name}
+                        </div>
+                      </div>
+                      {attachmentUrls[attachment.id] ? (
+                        <audio 
+                          controls 
+                          className="w-full" 
+                          preload="metadata"
+                        >
+                          <source src={attachmentUrls[attachment.id]} type="audio/mpeg" />
+                          Your browser does not support the audio element.
+                        </audio>
+                      ) : (
+                        <div className="h-10 flex items-center justify-center bg-gray-50">
+                          <span className="text-gray-400">Loading audio...</span>
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     // Other file types
                     <a
@@ -255,7 +288,7 @@ export function MessageList({ initialMessages, channelId, currentUserId, isDM = 
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
                     >
-                      <div className="text-2xl">📎</div>
+                      <div className="text-2xl">{getFileIcon(attachment.type)}</div>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium text-gray-700 truncate">
                           {attachment.name}
