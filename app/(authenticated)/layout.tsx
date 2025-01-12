@@ -5,12 +5,16 @@ import { LogoutButton } from '@/components/LogoutButton'
 import GlobalSearch from '@/components/GlobalSearch'
 import { MessageInput } from '@/components/MessageInput'
 import { getServerUser } from '@/lib/auth'
+import { headers } from 'next/headers'
 
 export default async function AuthenticatedLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  // Force dynamic rendering for auth check
+  headers()
+  
   const { user, error } = await getServerUser()
 
   if (error || !user) {

@@ -13,22 +13,43 @@ export function LogoutButton({ userId }: Props) {
   const { socket } = useSocket({})
   
   const handleLogout = async () => {
-    // Emit offline status before logging out
-    if (socket && userId) {
-      socket.emit('status', {
-        userId,
-        status: 'offline',
-        updatedAt: new Date()
+    try {
+      // Emit offline status before logging out
+      if (socket && userId) {
+        socket.emit('status', {
+          userId,
+          status: 'offline',
+          updatedAt: new Date()
+        })
+        
+        // Give the socket a moment to emit the status
+        await new Promise(resolve => setTimeout(resolve, 100))
+      }
+      
+      // Call logout API endpoint
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
       })
       
-      // Give the socket a moment to emit the status
-      await new Promise(resolve => setTimeout(resolve, 100))
+      if (!response.ok) {
+        throw new Error('Logout failed')
+      }
+
+      // Clear token and userId
+      TokenManager.removeToken()
+      TokenManager.removeUserId()
+      
+      // Force a router refresh to ensure all server components re-render
+      router.refresh()
+      router.push('/signin')
+    } catch (error) {
+      console.error('Failed to logout:', error)
+      // Still redirect to signin even if logout fails
+      router.push('/signin')
     }
-    
-    // Clear token and userId
-    TokenManager.removeToken()
-    TokenManager.removeUserId()
-    router.push('/signin')
   }
 
   return (

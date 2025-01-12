@@ -46,27 +46,41 @@ export async function getServerUser() {
   const cached = AUTH_CACHE.get(cacheKey)
   
   if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+    // Even with cache, verify the session is still valid
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      clearAuthCache()
+      return { user: null, error: AUTH_ERRORS.INVALID_TOKEN }
+    }
     return { user: cached.user, error: null }
   }
   
   try {
-    const { data: { user }, error } = await supabase.auth.getUser()
+    // Get both user and session
+    const [userResponse, sessionResponse] = await Promise.all([
+      supabase.auth.getUser(),
+      supabase.auth.getSession()
+    ])
     
-    if (error) {
+    const { data: { user }, error: userError } = userResponse
+    const { data: { session }, error: sessionError } = sessionResponse
+    
+    if (userError || sessionError) {
       // Clear cache and handle specific Supabase error cases
       clearAuthCache()
       
-      if (error.message?.includes('token')) {
+      const error = userError || sessionError
+      if (error?.message?.includes('token')) {
         return { user: null, error: AUTH_ERRORS.INVALID_TOKEN }
       }
-      if (error.status === 429) {
+      if (error?.status === 429) {
         return { user: null, error: AUTH_ERRORS.RATE_LIMIT }
       }
-      throw error
+      throw error || new Error('Unknown authentication error')
     }
     
-    // Only cache if we have a valid user
-    if (user) {
+    // Only cache if we have both valid user and session
+    if (user && session) {
       AUTH_CACHE.set(cacheKey, {
         user,
         timestamp: Date.now()
@@ -74,7 +88,7 @@ export async function getServerUser() {
       return { user, error: null }
     }
     
-    // Clear cache if no user found
+    // Clear cache if no user or session found
     clearAuthCache()
     return { user: null, error: AUTH_ERRORS.NO_USER }
     

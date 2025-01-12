@@ -32,12 +32,25 @@ export async function POST() {
     // Sign out using Supabase
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
     await supabase.auth.signOut()
-    console.log("👋 User signed out successfully")
 
     // Clear auth cache
     clearAuthCache()
 
-    return new Response(null, { status: 200 })
+    console.log("👋 User signed out successfully")
+
+    // Return response with cookie clearing headers
+    const cookieExpiryDate = new Date(0).toUTCString()
+    return new Response(null, {
+      status: 200,
+      headers: {
+        // Clear all Supabase session cookies
+        'Set-Cookie': [
+          `sb-access-token=deleted; path=/; expires=${cookieExpiryDate}; httponly`,
+          `sb-refresh-token=deleted; path=/; expires=${cookieExpiryDate}; httponly`,
+          `supabase-auth-token=deleted; path=/; expires=${cookieExpiryDate}; httponly`
+        ].join(', ')
+      }
+    })
   } catch (error) {
     console.error('💥 Error during logout:', error)
     return new Response(null, { status: 500 })
