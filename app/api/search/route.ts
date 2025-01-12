@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from "next/headers"
+import { getAPIUser } from '@/lib/auth'
 
 export async function GET(req: Request) {
   try {
@@ -10,8 +10,7 @@ export async function GET(req: Request) {
     const channelId = searchParams.get('channelId')
 
     const cookieStore = cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
-    const { data: { user }, error } = await supabase.auth.getUser()
+    const { user, error } = await getAPIUser(() => cookieStore)
     
     if (error || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -83,26 +82,11 @@ export async function GET(req: Request) {
       take: 20
     })
 
-    console.log('Search found messages:', messages.length)
-
-    return NextResponse.json({
-      results: messages.map(msg => ({
-        id: msg.id,
-        content: msg.content,
-        createdAt: msg.createdAt,
-        author: msg.author,
-        channel: msg.channel,
-        isDM: !!msg.directChat,
-        dmPartner: msg.directChat 
-          ? msg.directChat.participants.find(p => p.id !== user.id)
-          : null
-      }))
-    })
-
+    return NextResponse.json(messages)
   } catch (error) {
-    console.error('Search error:', error)
+    console.error("Search error:", error)
     return NextResponse.json(
-      { error: 'Failed to perform search' },
+      { error: "Failed to process search request" },
       { status: 500 }
     )
   }

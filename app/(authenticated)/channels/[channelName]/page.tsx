@@ -1,9 +1,8 @@
+import { redirect } from "next/navigation"
+import { prisma } from "@/lib/prisma"
 import { getMessages } from "@/components/MessageListServer"
 import { ChatContainer } from "@/components/ChatContainer"
-import { prisma } from "@/lib/prisma"
-import { cookies } from "next/headers"
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
-import { redirect } from "next/navigation"
+import { getServerUser } from "@/lib/auth"
 
 interface ChannelPageProps {
   params: Promise<{ channelName: string }>
@@ -16,13 +15,9 @@ export default async function ChannelPage({ params, searchParams }: ChannelPageP
   const { channelName } = resolvedParams;
   const messageId = resolvedSearchParams.messageId;
 
-  // Get auth user
-  const cookieStore = cookies()
-  const supabase = createServerComponentClient({ 
-    cookies: () => cookieStore 
-  })
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
+  const { user, error } = await getServerUser()
+  
+  if (error || !user) {
     redirect('/signin')
   }
 

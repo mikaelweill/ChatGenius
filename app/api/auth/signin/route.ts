@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
+import { getAPIUser } from '@/lib/auth'
 
 export async function POST(req: Request) {
   try {
@@ -17,8 +18,11 @@ export async function POST(req: Request) {
     let user;
     if (code === 'VERIFIED') {
       console.log("✅ User already verified, getting session")
-      const session = await supabase.auth.getSession()
-      user = session.data.session?.user
+      const { user: authUser, error: authError } = await getAPIUser(() => cookies())
+      if (authError || !authUser) {
+        throw authError || new Error('Failed to get user')
+      }
+      user = authUser
       console.log("👤 Got user from session:", user?.id)
     } else if (code) {
       console.log("🔐 Verifying OTP code")

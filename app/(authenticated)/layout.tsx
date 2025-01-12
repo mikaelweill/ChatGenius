@@ -1,31 +1,17 @@
 import { redirect } from "next/navigation"
-import { cookies } from "next/headers"
 import { prisma } from "@/lib/prisma"
 import { ChannelSwitcher } from "@/components/ChannelSwitcher"
 import { LogoutButton } from '@/components/LogoutButton'
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import GlobalSearch from '@/components/GlobalSearch'
-import { headers } from 'next/headers'
 import { MessageInput } from '@/components/MessageInput'
-
-// Create a singleton for auth to avoid multiple cookie accesses
-async function getAuthUser() {
-  // Only get cookies once and reuse
-  const cookieStore = cookies()
-  const headersList = headers()
-  const supabase = createServerComponentClient({ 
-    cookies: () => cookieStore,
-  })
-  const { data: { user }, error } = await supabase.auth.getUser()
-  return { user, error }
-}
+import { getServerUser } from '@/lib/auth'
 
 export default async function AuthenticatedLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const { user, error } = await getAuthUser()
+  const { user, error } = await getServerUser()
 
   if (error || !user) {
     redirect('/signin')

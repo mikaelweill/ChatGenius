@@ -1,23 +1,23 @@
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from "next/headers"
 import { prisma } from "@/lib/prisma"
+import { getAPIUser, clearAuthCache } from '@/lib/auth'
 
 export async function POST() {
   try {
     const cookieStore = cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+    const { user, error } = await getAPIUser(() => cookieStore)
+    
+    if (error) {
+      console.error("❌ Auth error during logout:", error)
+      // Continue with signout even if auth check fails
+    }
 
-    // Get the current session
-    const { data: { session } } = await supabase.auth.getSession()
-    const userId = session?.user?.id
-
-    console.log("🔑 Logout: Processing for user:", userId)
-
-    if (userId) {
+    if (user?.id) {
       try {
         // Update user status to offline
         const updatedUser = await prisma.user.update({
-          where: { id: userId },
+          where: { id: user.id },
           data: { status: 'offline' }
         })
         console.log("✅ Status updated to offline for user:", updatedUser.id)
@@ -30,8 +30,12 @@ export async function POST() {
     }
 
     // Sign out using Supabase
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
     await supabase.auth.signOut()
     console.log("👋 User signed out successfully")
+
+    // Clear auth cache
+    clearAuthCache()
 
     return new Response(null, { status: 200 })
   } catch (error) {

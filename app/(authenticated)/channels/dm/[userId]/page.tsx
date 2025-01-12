@@ -1,9 +1,8 @@
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import { getMessages } from "@/components/MessageListServer"
-import { cookies } from "next/headers"
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import { ChatContainer } from "@/components/ChatContainer"
+import { getServerUser } from "@/lib/auth"
 
 export default async function DMPage({ 
   params 
@@ -12,12 +11,9 @@ export default async function DMPage({
 }) {
   const { userId: otherUserId } = await params
   
-  const cookieStore = cookies()
-  const supabase = createServerComponentClient({ cookies: () => cookieStore })
+  const { user, error } = await getServerUser()
   
-  const { data: { user } } = await supabase.auth.getUser()
-  
-  if (!user) {
+  if (error || !user) {
     redirect('/signin')
   }
 
