@@ -37,7 +37,7 @@ export function ChatContainer({
       
       {/* Messages Container */}
       <div className={`absolute inset-0 bottom-[64px] ${openThreadMessage ? 'right-[400px]' : ''}`}>
-        <div className="h-full overflow-y-auto">
+        <div className="h-full flex flex-col">
           <MessageList 
             initialMessages={initialMessages} 
             channelId={channelId}

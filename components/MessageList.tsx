@@ -220,11 +220,11 @@ export function MessageList({ initialMessages, channelId, currentUserId, isDM = 
   }, [messages, attachmentUrls]);
 
   return (
-    <FileDropZone onFileDrop={handleFileDrop} className="flex-1">
+    <FileDropZone onFileDrop={handleFileDrop} className="h-full flex flex-col">
       <div 
         ref={containerRef} 
         key={channelId} 
-        className="flex flex-col space-y-4 p-4 overflow-y-auto max-h-[calc(100vh-8rem)]"
+        className="flex-1 flex flex-col space-y-4 p-4 overflow-y-auto min-h-0"
       >
         {messages.map((message) => (
           <div 
