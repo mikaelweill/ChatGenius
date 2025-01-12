@@ -129,7 +129,7 @@ export function ThreadPanel({ isOpen, onClose, originalMessage, channelId, curre
         content,
         channelId,
         parentId: message.id,
-        isDM: false
+        isDM: message.directChatId !== null
       })
       setMainReplyContent('')
     } catch (error) {
