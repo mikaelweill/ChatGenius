@@ -403,15 +403,23 @@ app.prepare().then(() => {
               }
             }
           }),
-          // 2. Delete channel memberships
+          // 2. Delete attachments
+          prisma.attachment.deleteMany({
+            where: {
+              message: {
+                channelId
+              }
+            }
+          }),
+          // 3. Delete channel memberships
           prisma.channelMembership.deleteMany({
             where: { channelId }
           }),
-          // 3. Delete messages
+          // 4. Delete messages
           prisma.message.deleteMany({
             where: { channelId }
           }),
-          // 4. Delete the channel
+          // 5. Delete the channel
           prisma.channel.delete({
             where: { id: channelId }
           })
