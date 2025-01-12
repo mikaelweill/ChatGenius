@@ -1,15 +1,14 @@
 import { NextResponse } from 'next/server';
 import { getPresignedUploadUrl, validateFile, allowedFileTypes, MAX_FILE_SIZE } from '@/lib/s3';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
+import { getAPIUser } from '@/lib/auth';
 
 export async function POST(request: Request) {
     try {
-        // Check authentication using Supabase
-        const supabase = createRouteHandlerClient({ cookies });
-        const { data: { session } } = await supabase.auth.getSession();
+        const cookieStore = cookies()
+        const { user, error } = await getAPIUser(() => cookieStore)
         
-        if (!session) {
+        if (error || !user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 

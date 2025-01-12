@@ -1,56 +1,84 @@
-As always baby steps. Always ask for my permission before approving code. 
+# Authentication Optimization
 
-Here's where we are and what we need. Please when implementing part of this checklist ask me to update this checklist as well. 
+## Server-Side Implementation (✅ COMPLETED)
+- ✅ Created central auth module in `lib/auth.ts`
+- ✅ Implemented server-side caching with 5-minute duration
+- ✅ Added robust error handling with specific error types
+- ✅ Cache invalidation on auth errors
+- ✅ Updated all server components to use centralized auth:
+  - ✅ Main layout
+  - ✅ Channel pages
+  - ✅ DM pages
 
-1. Create Central Auth Module (IN PROGRESS) ✅
-   a. Create lib/auth.ts structure ✅
-      - Define shared interfaces ✅
-      - Set up server-side caching mechanism ✅
-      - Create utility functions ✅
-   b. Server-side utilities (IN PROGRESS) ✅
-      - Implement cached getUser ✅
-      - Handle API route auth ✅
-      - Optimize cache validation ✅
-        * Added cache invalidation on errors
-        * Improved error handling with specific error types
-        * Added error details for debugging
-      - Add error handling for edge cases ✅
+## API Routes (✅ COMPLETED)
+- ✅ Updated auth endpoints:
+  - ✅ Signin route
+  - ✅ Logout route with cache clearing
+- ✅ Updated data endpoints:
+  - ✅ Search route
+  - ✅ Messages route
+  - ✅ Upload route
+- ✅ Consistent error handling across all routes
+- ✅ Proper cache utilization
 
-2. Server Implementation (NEXT UP) 👈 We are here
-   a. Update server components
-      - Modify layout.tsx to use new auth module
-      - Update other authenticated pages
-      - Ensure proper cache usage
-   b. Update API routes
-      - Standardize auth checks
-      - Implement caching
-      - Error handling
+## WebSocket Auth (✅ ALREADY OPTIMIZED)
+- ✅ Single auth check on connection
+- ✅ Efficient userId caching in socket.data
+- ✅ No repeated auth calls
+- ✅ Proper security checks for user actions
 
-3. Testing & Optimization (TO DO)
-   a. Verify auth flow
-      - Test sign in persistence
-      - Test API auth
-      - Test cache invalidation
-   b. Monitor performance
-      - Track auth calls
-      - Verify caching
-      - Check rate limits
+## Frontend Implementation (👈 NEXT UP)
+- Centralize frontend auth logic
+- Clean up client-side components:
+  - SessionProvider
+  - LogoutButton
+  - SignIn page
+  - Socket hooks
+- Remove redundant token management
+- Leverage Supabase's built-in session handling
 
-4. Cleanup & Documentation (TO DO)
-   a. Remove old code
-      - Clean up duplicate auth checks
-      - Remove unused auth code
-      - Update imports
-   b. Document new system
-      - Add comments
-      - Update README
-      - Document caching behavior
+## Testing Plan
+1. Server Component Auth:
+   - Sign out and verify redirect to signin page
+   - Visit authenticated routes directly (e.g., /channels/general) while logged out
+   - Verify single auth check in Network tab for multiple page navigations within 5 minutes
+   - Wait 5 minutes and verify new auth check occurs
 
-Key Learnings & Decisions:
-1. Using a simple static cache key ('auth_user') for server-side caching
-2. Caching only valid authenticated users (no errors)
-3. 5-minute cache duration for security
-4. Cache invalidation on any auth errors for security ✅
-5. Specific error types with codes and details for debugging ✅
-6. Relying on Supabase's built-in session management for client-side ✅
-7. Removed redundant token management for better security ✅
+2. API Route Auth:
+   - Use Network tab to monitor auth calls during:
+     - Message searches
+     - File uploads
+     - Message sending
+   - Verify auth errors are handled gracefully
+   - Test rate limiting by making rapid requests
+
+3. WebSocket Testing:
+   - Monitor socket connection in Network tab
+   - Verify single auth check on connection
+   - Test reconnection behavior on network interruption
+   - Verify status updates work after reconnection
+
+4. Cache Validation:
+   - Sign out from one tab and verify other tabs redirect
+   - Test auth error scenarios to verify cache clearing
+   - Monitor Redis/server logs for cache hits/misses
+
+5. Error Scenarios:
+   - Modify auth token to be invalid
+   - Test expired sessions
+   - Test malformed requests
+   - Verify error messages are helpful but not revealing
+
+## Key Learnings & Decisions
+1. Server-side caching with 5-minute duration provides good balance of security and performance
+2. Centralized error handling improves consistency and debugging
+3. WebSocket auth was already well-optimized with single auth check
+4. Frontend can leverage Supabase's built-in session management
+5. Removed redundant auth checks in API routes
+6. Cache invalidation on auth errors prevents serving stale data
+
+## Next Steps
+1. Review and plan frontend auth optimization
+2. Consider consolidating WebSocket status management with auth state
+3. Add monitoring for auth performance metrics
+4. Execute testing plan to verify optimizations

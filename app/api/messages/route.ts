@@ -1,44 +1,58 @@
 import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from "next/headers"
+import { getAPIUser } from '@/lib/auth'
 
 // GET handler for fetching messages
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url)
-  const channelId = searchParams.get('channelId')
+  try {
+    const { searchParams } = new URL(req.url)
+    const channelId = searchParams.get('channelId')
 
-  if (!channelId) {
-    return NextResponse.json({ error: 'Channel ID required' }, { status: 400 })
-  }
+    if (!channelId) {
+      return NextResponse.json({ error: 'Channel ID required' }, { status: 400 })
+    }
 
-  const messages = await prisma.message.findMany({
-    where: {
-      channelId,
-    },
-    include: {
-      author: {
-        select: {
-          name: true,
-          email: true,
+    const cookieStore = cookies()
+    const { user, error } = await getAPIUser(() => cookieStore)
+    
+    if (error || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const messages = await prisma.message.findMany({
+      where: {
+        channelId,
+      },
+      include: {
+        author: {
+          select: {
+            name: true,
+            email: true,
+          },
         },
       },
-    },
-    orderBy: {
-      createdAt: 'asc',
-    },
-  })
+      orderBy: {
+        createdAt: 'asc',
+      },
+    })
 
-  return NextResponse.json(messages)
+    return NextResponse.json(messages)
+  } catch (error) {
+    console.error("Error fetching messages:", error)
+    return NextResponse.json(
+      { error: "Failed to fetch messages" },
+      { status: 500 }
+    )
+  }
 }
 
 // POST handler for creating messages
 export async function POST(req: Request) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
+    const cookieStore = cookies()
+    const { user, error } = await getAPIUser(() => cookieStore)
     
-    // Get authenticated user
-    const { data: { user }, error } = await supabase.auth.getUser()
     if (error || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -86,9 +100,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("Error:", error)
+    console.error("Error processing message:", error)
     return NextResponse.json(
-      { error: "Failed to process request" },
+      { error: "Failed to process message" },
       { status: 500 }
     )
   }
