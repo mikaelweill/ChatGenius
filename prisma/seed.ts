@@ -63,6 +63,20 @@ async function main() {
   })
   console.log('✓ Connected admin to general channel')
   */
+
+  // Create AI_SYSTEM user if it doesn't exist
+  const aiUser = await prisma.user.upsert({
+    where: { id: 'AI_SYSTEM' },
+    update: {},
+    create: {
+      id: 'AI_SYSTEM',
+      name: 'AI Assistant',
+      email: 'ai@chatgenius.local',
+      status: 'online'
+    }
+  })
+
+  console.log('✓ AI_SYSTEM user created:', aiUser)
 }
 
 main()

@@ -3,6 +3,7 @@ import { parse } from 'url'
 import next from 'next'
 import { Server } from 'socket.io'
 import { prisma } from './lib/prisma'
+import { getChatCompletion } from './lib/openai'
 
 const dev = process.env.NODE_ENV !== 'production'
 const app = next({ dev })
@@ -321,6 +322,39 @@ app.prepare().then(() => {
 
         socket.join(data.channelId)
         
+        // Handle AI command if present
+        if (data.isAICommand) {
+          try {
+            const aiContent = await getChatCompletion(data.content.slice(4))
+            
+            const aiMessage = await prisma.message.create({
+              data: {
+                content: aiContent,
+                authorId: 'AI_SYSTEM',
+                ...(data.isDM ? { directChatId: data.channelId } : { channelId: data.channelId })
+              },
+              include: {
+                author: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    status: true
+                  }
+                }
+              }
+            })
+
+            if (data.isDM) {
+              io.to(data.channelId).emit('dm_message_received', aiMessage)
+            } else {
+              io.to(data.channelId).emit('message_received', aiMessage)
+            }
+          } catch (error) {
+            console.error('Error processing AI command:', error)
+          }
+        }
+
         if (!data.parentId) {
           io.to(data.channelId).emit('message_received', savedMessage)
         }

@@ -31,6 +31,7 @@ interface ClientToServerEvents {
     channelId: string
     parentId?: string
     isDM?: boolean
+    isAICommand?: boolean
     attachment?: {
       url: string
       type: string
@@ -41,6 +42,7 @@ interface ClientToServerEvents {
     content: string
     dmId: string
     parentId?: string
+    isAICommand?: boolean
     attachment?: {
       url: string
       type: string
@@ -397,6 +399,7 @@ export function useSocketRoom({ channelId, isDM = false }: { channelId: string, 
           content,
           dmId: channelId,
           parentId,
+          isAICommand: false,
           attachment
         })
       } else {
@@ -405,6 +408,7 @@ export function useSocketRoom({ channelId, isDM = false }: { channelId: string, 
           channelId,
           parentId,
           isDM,
+          isAICommand: false,
           attachment
         })
       }
@@ -505,4 +509,4 @@ export function cleanupSocket() {
     sharedSocket.disconnect()
     sharedSocket = null
   }
-} 
+}

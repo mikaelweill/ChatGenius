@@ -73,6 +73,7 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
       })
       setContent('')
       setUploadedFile(null)
+      setShowAIFormatting(false)
     } catch (error) {
       console.error('Error sending message:', error)
     }
