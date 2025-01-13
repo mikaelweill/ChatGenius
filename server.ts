@@ -194,18 +194,19 @@ app.prepare().then(() => {
       
       socket.join(channelId)
       userChannels.set(socket.id, channelId)
+      console.log('Socket joined channel:', channelId)
     })
 
     socket.on('new_message', async (data) => {
       try {
-        console.log('Received message data:', data);
+        // console.log('Received message data:', data);
         const messageData: {
           content: string;
           authorId: string;
           directChatId?: string;
           channelId?: string;
           parentId?: string;
-          attachments?: {  // Make attachments optional with ?
+          attachments?: {
             create: {
               url: string;
               type: string;

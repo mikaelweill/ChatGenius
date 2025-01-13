@@ -15,16 +15,15 @@ interface ServerToClientEvents {
   channel_created: (channel: Channel) => void
   channel_delete: (channelId: string) => void
   channel_error: (error: { message: string }) => void
-  initial_statuses: (statuses: Array<{ userId: string, status: 'online' | 'offline', updatedAt: Date }>) => void
-  status_update: (status: { userId: string, status: 'online' | 'offline', updatedAt: Date }) => void
+  initial_statuses: (statuses: Array<{ userId: string, status: string, updatedAt: Date }>) => void
+  status_update: (status: { userId: string, status: string, updatedAt: Date }) => void
   reaction_added: (data: { messageId: string, reaction: any }) => void
   reaction_removed: (data: { messageId: string, reactionId: string }) => void
   dm_created: (chat: any) => void
-  user_disconnected: (userId: string) => void
 }
 
 interface ClientToServerEvents {
-  join_channel: (channelId: string) => void
+  join_channel: (data: { channelId: string }) => void
   join_dm: (data: { dmId: string }) => void
   new_message: (data: { 
     content: string
@@ -49,10 +48,9 @@ interface ClientToServerEvents {
   }) => void
   channel_create: (data: { name: string, description?: string }) => void
   channel_delete: (channelId: string) => void
-  status: (data: { userId: string, status: 'online' | 'offline', updatedAt: Date }) => void
+  status: (data: { userId: string, status: string, updatedAt: Date }) => void
   add_reaction: (data: { messageId: string, emoji: string, channelId: string }) => void
   user_signup: (data: any) => void
-  request_statuses: () => void
 }
 
 interface SocketContextType {
@@ -191,7 +189,7 @@ export function SocketProvider({ children, userId }: SocketProviderProps) {
         if (isDM) {
           sharedSocket.emit('join_dm', { dmId: roomId })
         } else {
-          sharedSocket.emit('join_channel', roomId)
+          sharedSocket.emit('join_channel', { channelId: roomId })
         }
         
         setCurrentRoom(roomId)
@@ -225,23 +223,12 @@ export function useSocketRoom({ channelId, isDM = false }: { channelId: string, 
   const [messages, setMessages] = useState<MessageWithAuthorAndReactions[]>([])
   const [isJoining, setIsJoining] = useState(false)
 
-  // Handle room joining
   useEffect(() => {
-    if (!socket || !isConnected || isJoining || currentRoom === channelId) return
+    if (!socket || !isConnected || isJoining) return
 
     setIsJoining(true)
     joinRoom(channelId, isDM)
-    
-    const timer = setTimeout(() => {
-      setIsJoining(false)
-    }, 100)
-
-    return () => clearTimeout(timer)
-  }, [socket, isConnected, channelId, isDM, joinRoom, currentRoom, isJoining])
-
-  // Handle message events
-  useEffect(() => {
-    if (!socket || !isConnected) return
+    setIsJoining(false)
 
     const onMessage = (message: MessageWithAuthorAndReactions) => {
       if (message.channelId === channelId || message.directChatId === channelId) {
@@ -249,46 +236,20 @@ export function useSocketRoom({ channelId, isDM = false }: { channelId: string, 
       }
     }
 
-    socket.on(isDM ? 'dm_message_received' : 'message_received', onMessage)
-
-    return () => {
-      socket.off(isDM ? 'dm_message_received' : 'message_received', onMessage)
-    }
-  }, [socket, isConnected, channelId, isDM])
-
-  // Handle reaction and message update events separately
-  useEffect(() => {
-    if (!socket || !isConnected) return
-
     const onMessageUpdated = (message: MessageWithAuthorAndReactions) => {
       if (message.channelId === channelId || message.directChatId === channelId) {
         setMessages(prev => prev.map(m => m.id === message.id ? message : m))
       }
     }
 
+    socket.on(isDM ? 'dm_message_received' : 'message_received', onMessage)
     socket.on('message_updated', onMessageUpdated)
-    socket.on('reaction_added', ({ messageId, reaction }) => {
-      setMessages(prev => prev.map(m => 
-        m.id === messageId 
-          ? { ...m, reactions: [...m.reactions, reaction] }
-          : m
-      ))
-    })
-
-    socket.on('reaction_removed', ({ messageId, reactionId }) => {
-      setMessages(prev => prev.map(m => 
-        m.id === messageId 
-          ? { ...m, reactions: m.reactions.filter(r => r.id !== reactionId) }
-          : m
-      ))
-    })
 
     return () => {
+      socket.off(isDM ? 'dm_message_received' : 'message_received', onMessage)
       socket.off('message_updated', onMessageUpdated)
-      socket.off('reaction_added')
-      socket.off('reaction_removed')
     }
-  }, [socket, isConnected, channelId])
+  }, [socket, isConnected, channelId, isDM, joinRoom, isJoining])
 
   return {
     socket,
