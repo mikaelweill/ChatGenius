@@ -4,7 +4,7 @@ import { createContext, useEffect, useState } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import type { Session } from '@supabase/auth-helpers-nextjs'
 import { useRouter } from 'next/navigation'
-import { sharedSocket } from '@/hooks/useSocket'
+import { sharedSocket, cleanupSocket } from '@/hooks/useSocket'
 
 export const SessionContext = createContext<Session | null>(null)
 
@@ -31,10 +31,8 @@ export function SessionProvider({ children }: SessionProviderProps) {
         // Clean up any existing socket before setting new session
         if (sharedSocket) {
           console.log('🔌 Cleaning up existing socket connection')
-          sharedSocket.removeAllListeners()
-          sharedSocket.disconnect()
+          cleanupSocket()
           console.log('🔌 Socket connection cleaned up')
-          sharedSocket = null
         }
       }
       setSession(session)

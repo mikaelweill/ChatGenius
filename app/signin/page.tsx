@@ -104,39 +104,64 @@ export default function SignIn() {
     setError("")
 
     const codeToVerify = directCode || code // Use direct code if provided
+    console.log('🔍 Starting verification with code length:', codeToVerify.length)
 
     try {
       // First try email verification (for existing users)
-      let { error } = await supabase().auth.verifyOtp({
-        email,
-        token: codeToVerify,
-        type: 'email'
-      })
+      console.log('📧 Attempting email verification...')
+      let { error } = await fetch('/api/auth/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          token: codeToVerify,
+          type: 'email'
+        })
+      }).then(res => res.json())
 
       // If that fails, try signup verification
       if (error?.message?.includes('Invalid token')) {
-        const signupResult = await supabase().auth.verifyOtp({
-          email,
-          token: codeToVerify,
-          type: 'signup'
-        })
+        console.log('🆕 Email verification failed, trying signup verification...')
+        const signupResult = await fetch('/api/auth/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email,
+            token: codeToVerify,
+            type: 'signup'
+          })
+        }).then(res => res.json())
         error = signupResult.error
       }
 
       if (error) {
+        console.error('❌ Verification error:', error)
         setError(error.message)
         return
       }
 
+      console.log('✅ OTP verification successful')
+
       // Get session after successful verification
-      const { data: { session } } = await supabase().auth.getSession()
+      console.log('🔐 Getting session...')
+      const { data: { session }, error: sessionError } = await supabase().auth.getSession()
+      
+      if (sessionError) {
+        console.error('❌ Session error:', sessionError)
+        setError('Failed to get session: ' + sessionError.message)
+        return
+      }
       
       if (!session) {
+        console.error('❌ No session after verification')
         setError('Failed to get session')
         return
       }
 
+      console.log('✅ Got session:', { userId: session.user.id })
+
       // Create user in Prisma after successful verification
+      console.log('👤 Creating/updating user in database...')
       const response = await fetch('/api/auth/signin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -147,17 +172,28 @@ export default function SignIn() {
       })
 
       if (!response.ok) {
+        console.error('❌ API error:', await response.text())
         throw new Error('Failed to create user')
       }
 
+      console.log('✅ User created/updated in database')
+
       // Store user ID and redirect
-      const { data: { user } } = await supabase().auth.getUser()
+      console.log('🔑 Getting final user data...')
+      const { data: { user }, error: userError } = await supabase().auth.getUser()
+      
+      if (userError) {
+        console.error('❌ User fetch error:', userError)
+        throw userError
+      }
+
       if (user?.id) {
+        console.log('💾 Storing user ID:', user.id)
         TokenManager.setUserId(user.id)
       }
 
-      // Use window.location for hard refresh
-      window.location.href = '/'
+      console.log('🚀 Redirecting to home...')
+      router.push('/')
 
     } catch (error) {
       console.error('Verification error:', error)

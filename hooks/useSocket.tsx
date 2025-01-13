@@ -78,19 +78,27 @@ export let sharedSocket: Socket<ServerToClientEvents, ClientToServerEvents> | nu
 
 // Helper function to get or create socket
 const getSocket = (userId: string) => {
-  if (sharedSocket) return sharedSocket
+  // Always clean up any existing socket
+  if (sharedSocket) {
+    console.log('🔌 Cleaning up existing socket')
+    sharedSocket.removeAllListeners()
+    sharedSocket.disconnect()
+    sharedSocket = null
+  }
 
   const socketUrl = process.env.NODE_ENV === 'production'
     ? process.env.NEXT_PUBLIC_APP_URL
     : 'http://localhost:3000'
 
-  console.log('🔌 Creating socket connection:', { userId, url: socketUrl })
+  console.log('🔌 Creating brand new socket connection:', { 
+    userId, 
+    url: socketUrl,
+    timestamp: new Date().toISOString()
+  })
 
-  sharedSocket = io(socketUrl, {
-    auth: { 
-      userId,
-      connectionId: `${userId}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
-    },
+  // Always create a new socket
+  const socket = io(socketUrl, {
+    auth: { userId },
     forceNew: true,
     transports: ['websocket', 'polling'],
     reconnectionAttempts: 5,
@@ -98,7 +106,9 @@ const getSocket = (userId: string) => {
     timeout: 10000,
   })
 
-  return sharedSocket
+  // Set as shared socket for cleanup purposes
+  sharedSocket = socket
+  return socket
 }
 
 // Provider

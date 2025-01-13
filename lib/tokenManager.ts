@@ -1,8 +1,12 @@
 // Simple synchronous token storage
 export const TokenManager = {
   setToken: (token: string) => {
-    if (typeof window !== 'undefined') {
+    try {
+      console.log('🔑 Attempting to set token:', { browserType: navigator.userAgent })
       localStorage.setItem('socket_token', token)
+      console.log('🔑 Token set successfully')
+    } catch (error) {
+      console.error('🔑 Error setting token:', error)
     }
   },
   
@@ -21,8 +25,12 @@ export const TokenManager = {
 
   // Add these new methods for userId
   setUserId: (userId: string) => {
-    if (typeof window !== 'undefined') {
+    try {
+      console.log('🔑 Attempting to set userId:', { browserType: navigator.userAgent })
       localStorage.setItem('socket_userId', userId)
+      console.log('🔑 UserId set successfully')
+    } catch (error) {
+      console.error('🔑 Error setting userId:', error)
     }
   },
   
