@@ -34,13 +34,15 @@ export function ChannelSwitcher({ channels: initialChannels, directChats, curren
     if (!socket) return
 
     const onChannelCreated = (channel: Channel) => {
-      console.log('🔌 Channel created:', channel)
       setChannels(prev => [...prev, channel])
     }
 
     const onChannelDeleted = (channelId: string) => {
-      console.log('🔌 Channel deleted:', channelId)
       setChannels(prev => prev.filter(c => c.id !== channelId))
+      
+      // If current channel was deleted, redirect to general
+
+      
     }
 
     socket.on('channel_created', onChannelCreated)
@@ -50,9 +52,7 @@ export function ChannelSwitcher({ channels: initialChannels, directChats, curren
       socket.off('channel_created', onChannelCreated)
       socket.off('channel_delete', onChannelDeleted)
     }
-  }, [socket])
-
-  console.log('🔌 ChannelSwitcher Socket Status:', { isConnected })
+  }, [socket, channels, currentChannelId, pathname, setChannels])
 
   const isDuplicateName = channels.some(
     channel => channel.name.toLowerCase() === newChannelName.toLowerCase()
@@ -62,16 +62,8 @@ export function ChannelSwitcher({ channels: initialChannels, directChats, curren
     e.preventDefault()
     if (!newChannelName.trim() || isDuplicateName) return
 
-    console.log('🔌 Creating channel:', { 
-      isConnected, 
-      newChannelName,
-      createChannel: !!createChannel,
-      socket: !!socket
-    })
-    
     try {
       createChannel(newChannelName)
-      console.log('🔌 Channel creation request sent')
       setNewChannelName('')
       setIsCreating(false)
     } catch (error) {
@@ -80,13 +72,6 @@ export function ChannelSwitcher({ channels: initialChannels, directChats, curren
   }
 
   const handleDeleteChannel = async (channel: Channel) => {
-    console.log('🔌 Deleting channel:', { 
-      isConnected, 
-      channelId: channel.id,
-      channelName: channel.name,
-      deleteChannel: !!deleteChannel 
-    })
-    
     deleteChannel(channel.id)
   }
 

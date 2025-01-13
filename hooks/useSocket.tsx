@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react'
 import { io, Socket } from 'socket.io-client'
-import { TokenManager } from '../lib/tokenManager'
+import { TokenManager } from '@/lib/tokenManager'
 import { Message, Channel } from '@prisma/client'
 import { useRouter, usePathname } from 'next/navigation'
 import { MessageWithAuthorAndReactions } from '../types/message'
@@ -76,11 +76,39 @@ const SocketContext = createContext<SocketContextType | null>(null)
 // Singleton socket instance
 export let sharedSocket: Socket<ServerToClientEvents, ClientToServerEvents> | null = null
 
+// Add debug logging
+const debugLog = (message: string, data: any) => {
+  console.log(`🔍 [DEBUG] ${message}:`, JSON.stringify(data, null, 2))
+}
+
 // Helper function to get or create socket
-const getSocket = (userId: string) => {
+const getSocket = (userId: string): Socket<ServerToClientEvents, ClientToServerEvents> | null => {
+  // ALWAYS use TokenManager's userId - this is our source of truth
+  const tokenManagerUserId = TokenManager.getUserId()
+  
+  if (!tokenManagerUserId) {
+    console.error('🔌 No userId in TokenManager - cannot create socket')
+    return null
+  }
+
+  // Verify userId matches TokenManager
+  if (userId !== tokenManagerUserId) {
+    console.error('🔌 UserId mismatch:', { 
+      providedUserId: userId, 
+      tokenManagerUserId 
+    })
+    return null
+  }
+
   // Always clean up any existing socket
   if (sharedSocket) {
-    console.log('🔌 Cleaning up existing socket')
+    debugLog('Cleaning up existing socket', {
+      existingSocketId: sharedSocket.id,
+      newUserId: userId,
+      tokenManagerId: TokenManager.getUserId(),
+      timestamp: new Date().toISOString()
+    })
+    
     sharedSocket.removeAllListeners()
     sharedSocket.disconnect()
     sharedSocket = null
@@ -90,25 +118,56 @@ const getSocket = (userId: string) => {
     ? process.env.NEXT_PUBLIC_APP_URL
     : 'http://localhost:3000'
 
-  console.log('🔌 Creating brand new socket connection:', { 
-    userId, 
-    url: socketUrl,
-    timestamp: new Date().toISOString()
-  })
+  // Generate a unique connection ID
+  const connectionId = `${tokenManagerUserId}-${Date.now()}-${Math.random().toString(36).slice(2)}`
 
-  // Always create a new socket
-  const socket = io(socketUrl, {
-    auth: { userId },
-    forceNew: true,
-    transports: ['websocket', 'polling'],
-    reconnectionAttempts: 5,
-    reconnectionDelay: 1000,
-    timeout: 10000,
-  })
+  try {
+    debugLog('Creating socket', {
+      userId,
+      tokenManagerId: TokenManager.getUserId(),
+      timestamp: new Date().toISOString()
+    })
 
-  // Set as shared socket for cleanup purposes
-  sharedSocket = socket
-  return socket
+    // Always create a new socket using TokenManager's userId
+    const newSocket = io(socketUrl, {
+      auth: { 
+        userId: tokenManagerUserId,  // ALWAYS use TokenManager's userId
+        connectionId 
+      },
+      forceNew: true,
+      transports: ['websocket', 'polling'],
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      timeout: 10000,
+    }) as Socket<ServerToClientEvents, ClientToServerEvents>
+
+    debugLog('Socket created', {
+      socketId: newSocket.id,
+      userId,
+      timestamp: new Date().toISOString()
+    })
+
+    // Add connection verification
+    newSocket.on('connect', () => {
+      const currentTokenUserId = TokenManager.getUserId()
+      if (currentTokenUserId !== tokenManagerUserId) {
+        console.error('🔌 UserId changed during connection:', {
+          originalUserId: tokenManagerUserId,
+          currentUserId: currentTokenUserId
+        })
+        newSocket.disconnect()
+        sharedSocket = null
+        return
+      }
+    })
+
+    // Set as shared socket for cleanup purposes
+    sharedSocket = newSocket
+    return newSocket
+  } catch (error) {
+    console.error('🔌 Error creating socket:', error)
+    return null
+  }
 }
 
 // Provider
@@ -126,17 +185,38 @@ export function SocketProvider({ children, userId }: SocketProviderProps) {
 
     try {
       console.log('🔌 Initializing socket with userId:', userId)
-      // Get or create the shared socket
       const socket = getSocket(userId)
 
+      if (!socket) {
+        console.log('🔌 No socket created')
+        return
+      }
+
       const onConnect = () => {
-        console.log('🔌 Socket connected successfully:', socket.id)
+        if (!socket) {
+          console.error('No socket available for connection')
+          return
+        }
+
+        debugLog('Socket connected', {
+          socketId: socket.id,
+          userId,
+          timestamp: new Date().toISOString()
+        })
+
         setIsConnected(true)
         setError(null)
       }
 
       const onDisconnect = (reason: string) => {
-        console.log('🔌 Socket disconnected:', reason)
+        debugLog('Socket disconnected', {
+          reason,
+          socketId: socket?.id,
+          userId,
+          tokenManagerId: TokenManager.getUserId(),
+          timestamp: new Date().toISOString()
+        })
+        
         setIsConnected(false)
         setCurrentRoom(null)
       }

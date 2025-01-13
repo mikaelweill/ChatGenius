@@ -12,12 +12,16 @@ const userChannels = new Map<string, string>() // socketId -> channelId
 const activeUsers = new Set<string>() // Set of online userIds
 const userStatuses = new Map<string, { status: string, updatedAt: Date, socketId: string }>();
 
+const debugLog = (message: string, data: any) => {
+  console.log(`🔍 [DEBUG] ${message}:`, JSON.stringify(data, null, 2))
+}
+
 const isUserOnline = (userId: string) => {
   return activeUsers.has(userId)
 }
 
 prisma.user.findFirst().then(user => {
-  // console.log('Prisma connection test:', !!user);
+  // Removed console log
 }).catch(err => {
   console.error('Prisma connection error:', err);
 });
@@ -59,47 +63,47 @@ app.prepare().then(() => {
   })
 
   io.use(async (socket, next) => {
-    // console.log('=== Socket Auth Debug ===');
-    // console.log('1. Raw handshake:', {
-    //   auth: socket.handshake.auth,
-    //   query: socket.handshake.query,
-    //   headers: socket.handshake.headers
-    // });
-
     const userId = socket.handshake.auth.userId;
-    // console.log('2. Extracted userId:', userId);
+    debugLog('Socket auth attempt', {
+      socketId: socket.id,
+      userId,
+      existingSocketsForUser: Array.from(userStatuses.entries())
+        .filter(([id]) => id === userId)
+        .map(([_, data]) => data.socketId),
+      timestamp: new Date().toISOString()
+    })
 
     if (!userId) {
-      // console.log('3a. Failed: No userId provided');
       return next(new Error('Authentication error'));
     }
 
     try {
-      // console.log('3b. Looking up user in database:', userId);
       const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: { id: true, email: true }  // Just for logging
+        select: { id: true, email: true }
       });
 
-      // console.log('4. Database lookup result:', user);
-
       if (!user) {
-        // console.log('5a. Failed: User not found in database');
         return next(new Error('Authentication error'));
       }
 
       socket.data.userId = userId;
-      // console.log('5b. Success: User authenticated:', { userId, socketId: socket.id });
       next();
     } catch (error) {
-      console.error('5c. Failed: Database error:', error);
+      console.error('Database error:', error);
       next(new Error('Authentication error'));
     }
   })
 
   io.on('connection', async (socket) => {
-    // console.log('Client connected:', socket.id)
     const userId = socket.data.userId
+
+    debugLog('New socket connection', {
+      socketId: socket.id,
+      userId,
+      activeUsers: Array.from(activeUsers),
+      timestamp: new Date().toISOString()
+    })
 
     // Mark user as online
     activeUsers.add(userId)
@@ -107,6 +111,13 @@ app.prepare().then(() => {
       status: 'online',
       updatedAt: new Date(),
       socketId: socket.id
+    })
+
+    debugLog('Updated user status', {
+      userId,
+      socketId: socket.id,
+      allUserStatuses: Array.from(userStatuses.entries()),
+      timestamp: new Date().toISOString()
     })
 
     // Send current statuses to the new connection
@@ -159,6 +170,14 @@ app.prepare().then(() => {
     })
 
     socket.on('disconnect', () => {
+      debugLog('Socket disconnecting', {
+        socketId: socket.id,
+        userId: socket.data.userId,
+        currentUserStatuses: Array.from(userStatuses.entries()),
+        currentActiveUsers: Array.from(activeUsers),
+        timestamp: new Date().toISOString()
+      })
+
       // Mark user as offline
       activeUsers.delete(userId)
       userStatuses.set(userId, {
@@ -167,12 +186,21 @@ app.prepare().then(() => {
         socketId: socket.id
       })
 
+      debugLog('Updated user status after disconnect', {
+        userId,
+        socketId: socket.id,
+        allUserStatuses: Array.from(userStatuses.entries()),
+        timestamp: new Date().toISOString()
+      })
+
       // Broadcast offline status
       io.emit('status_update', {
         userId,
         status: 'offline',
         updatedAt: new Date()
       })
+
+      userChannels.delete(socket.id)
     })
 
     // Debug ALL incoming events
@@ -194,12 +222,19 @@ app.prepare().then(() => {
       
       socket.join(channelId)
       userChannels.set(socket.id, channelId)
-      console.log('Socket joined channel:', channelId)
     })
 
     socket.on('new_message', async (data) => {
       try {
-        // console.log('Received message data:', data);
+        // Only log message creation attempts with minimal info
+        debugLog('Message creation attempt', {
+          authorId: socket.data.userId,
+          isDM: data.isDM,
+          hasAttachment: !!data.attachment,
+          isReply: !!data.parentId,
+          timestamp: new Date().toISOString()
+        })
+
         const messageData: {
           content: string;
           authorId: string;
@@ -218,19 +253,16 @@ app.prepare().then(() => {
           authorId: socket.data.userId,
         }
 
-        // Set channel type (DM or regular)
         if (data.isDM) {
           messageData.directChatId = data.channelId
         } else {
           messageData.channelId = data.channelId
         }
 
-        // Add parentId if it exists (for thread replies)
         if (data.parentId) {
           messageData.parentId = data.parentId
         }
 
-        // Add attachment if it exists
         if (data.attachment) {
           messageData.attachments = {
             create: {
@@ -240,8 +272,6 @@ app.prepare().then(() => {
             }
           }
         }
-
-        console.log('Final message data:', messageData);
 
         const savedMessage = await prisma.message.create({
           data: messageData,
@@ -254,7 +284,7 @@ app.prepare().then(() => {
                 status: true
               },
             },
-            attachments: true,  // Changed from attachment to attachments
+            attachments: true,
             reactions: {
               include: {
                 user: {
@@ -289,15 +319,12 @@ app.prepare().then(() => {
           },
         })
 
-        // Join the room (whether channel or DM)
         socket.join(data.channelId)
         
-        // Only emit message_received if it's not a reply
         if (!data.parentId) {
           io.to(data.channelId).emit('message_received', savedMessage)
         }
 
-        // If this is a reply, emit updated parent message
         if (data.parentId) {
           const updatedParentMessage = await prisma.message.findUnique({
             where: { id: data.parentId },
@@ -348,10 +375,17 @@ app.prepare().then(() => {
           })
           
           if (updatedParentMessage) {
-            console.log('Emitting updated parent message:', updatedParentMessage);
             io.to(data.channelId).emit('message_updated', updatedParentMessage)
           }
         }
+
+        // Log successful message creation
+        debugLog('Message created', {
+          messageId: savedMessage.id,
+          authorId: socket.data.userId,
+          isDM: data.isDM,
+          timestamp: new Date().toISOString()
+        })
       } catch (error) {
         console.error('Error processing message:', error)
       }
@@ -359,12 +393,13 @@ app.prepare().then(() => {
     
 
     socket.on('channel_create', async (data) => {
-      // console.log('Channel create event received:', {
-      //   data,
-      //   socketId: socket.id,
-      //   userId: socket.data.userId
-      // })
       try {
+        debugLog('Channel creation attempt', {
+          name: data.name,
+          userId: socket.data.userId,
+          timestamp: new Date().toISOString()
+        })
+
         const newChannel = await prisma.channel.create({
           data: {
             name: data.name,
@@ -372,8 +407,13 @@ app.prepare().then(() => {
           }
         })
         
-        // console.log('Successfully created channel:', newChannel)
         io.emit('channel_created', newChannel)
+
+        debugLog('Channel created', {
+          channelId: newChannel.id,
+          name: newChannel.name,
+          timestamp: new Date().toISOString()
+        })
       } catch (error) {
         console.error('Error creating channel:', error)
         socket.emit('channel_error', { 
@@ -383,13 +423,13 @@ app.prepare().then(() => {
     })
 
     socket.on('channel_delete', async (channelId: string) => {
-      // console.log('Channel delete event received:', {
-      //   channelId,
-      //   socketId: socket.id,
-      //   userId: socket.data.userId
-      // })
       try {
-        // Check if it's the general channel
+        debugLog('Channel deletion attempt', {
+          channelId,
+          userId: socket.data.userId,
+          timestamp: new Date().toISOString()
+        })
+
         const channel = await prisma.channel.findUnique({
           where: { id: channelId }
         })
@@ -402,9 +442,7 @@ app.prepare().then(() => {
           throw new Error('Cannot delete the general channel')
         }
 
-        // Use transaction to ensure all operations complete or none do
         await prisma.$transaction([
-          // 1. Delete reactions first (due to foreign key constraint)
           prisma.reaction.deleteMany({
             where: {
               message: {
@@ -412,7 +450,6 @@ app.prepare().then(() => {
               }
             }
           }),
-          // 2. Delete attachments
           prisma.attachment.deleteMany({
             where: {
               message: {
@@ -420,22 +457,24 @@ app.prepare().then(() => {
               }
             }
           }),
-          // 3. Delete channel memberships
           prisma.channelMembership.deleteMany({
             where: { channelId }
           }),
-          // 4. Delete messages
           prisma.message.deleteMany({
             where: { channelId }
           }),
-          // 5. Delete the channel
           prisma.channel.delete({
             where: { id: channelId }
           })
         ])
 
-        // Keep original event name
         io.emit('channel_delete', channelId)
+
+        debugLog('Channel deleted', {
+          channelId,
+          name: channel.name,
+          timestamp: new Date().toISOString()
+        })
       } catch (error) {
         console.error('Error deleting channel:', error)
         socket.emit('channel_error', { 

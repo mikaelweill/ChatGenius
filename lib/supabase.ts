@@ -22,9 +22,10 @@ export const supabase = () => {
 // For backward compatibility
 export const createBrowserClient = supabase
 
-// Disable Supabase logging
-if (typeof window !== 'undefined') {
-  console.debug = () => {}  // This will hide the Supabase debug logs
+// Suppress Supabase logs
+if (process.env.NODE_ENV === 'development') {
+  console.debug = () => {}  // Suppress debug logs
+  console.info = () => {}   // Suppress info logs
 }
 
 // Type for our Supabase client

@@ -54,11 +54,5 @@ export async function getMessages(chatId: string, isDM: boolean = false): Promis
     }
   }) as MessageWithAuthorAndReactions[]
 
-  console.log('Initial messages from server:', messages.map(m => ({
-    id: m.id,
-    content: m.content,
-    attachments: m.attachments
-  })));
-
   return messages
 } 
