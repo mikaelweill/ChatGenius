@@ -351,7 +351,7 @@ app.prepare().then(() => {
             })
 
             if (data.isDM) {
-              io.to(data.channelId).emit('dm_message_received', aiMessage)
+              io.to(data.channelId).emit('message_received', aiMessage)
             } else {
               io.to(data.channelId).emit('message_received', aiMessage)
             }
