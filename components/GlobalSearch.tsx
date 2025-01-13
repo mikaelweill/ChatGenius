@@ -103,9 +103,10 @@ export default function GlobalSearch({ userId }: GlobalSearchProps) {
       try {
         const response = await fetch(`/api/search?q=${encodeURIComponent(debouncedSearch)}`)
         const data = await response.json()
+        console.log('Search API response:', data)
         if (response.ok) {
-          console.log('Search results:', data.results.length)
-          setResults(data.results)
+          console.log('Search results:', data?.length)
+          setResults(data || [])
           setIsOpen(true)
         }
       } catch (error) {
