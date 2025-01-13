@@ -321,8 +321,13 @@ app.prepare().then(() => {
         })
 
         socket.join(data.channelId)
-        
-        // Handle AI command if present
+
+        // First emit the user's message
+        if (!data.parentId) {
+          io.to(data.channelId).emit('message_received', savedMessage)
+        }
+
+        // Then handle AI command if present
         if (data.isAICommand) {
           try {
             const aiContent = await getChatCompletion(data.content.slice(4))
@@ -353,10 +358,6 @@ app.prepare().then(() => {
           } catch (error) {
             console.error('Error processing AI command:', error)
           }
-        }
-
-        if (!data.parentId) {
-          io.to(data.channelId).emit('message_received', savedMessage)
         }
 
         if (data.parentId) {
