@@ -5,6 +5,7 @@ import { useSocketRoom } from '@/hooks/useSocket'
 import { FileDropZone } from './FileDropZone'
 import { uploadFile } from '@/lib/uploadUtils'
 import { eventBus } from '@/lib/eventBus'
+import { parseAICommand } from '@/lib/commandParser'
 
 interface UploadState {
   progress: number;
@@ -20,6 +21,7 @@ interface UploadedFile {
 
 export function MessageInput({ channelId, isDM = false }: { channelId: string, isDM?: boolean }) {
   const [content, setContent] = useState('')
+  const [isAICommand, setIsAICommand] = useState(false)
   const [uploadState, setUploadState] = useState<UploadState | null>(null)
   const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -91,6 +93,15 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
     }
   }
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newContent = e.target.value
+    setContent(newContent)
+    
+    // Check if it's an AI command
+    const commandResult = parseAICommand(newContent)
+    setIsAICommand(commandResult.isCommand)
+  }
+
   useEffect(() => {
     const unsubscribe = eventBus.onFileDrop((file) => {
       handleFileSelect(file);
@@ -137,14 +148,24 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
       <FileDropZone onFileDrop={(file) => eventBus.emitFileDrop(file)}>
         <form onSubmit={handleSubmit} className="p-4 border-t bg-white">
           <div className="flex gap-2">
-            <input
-              type="text"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder={uploadedFile ? "Add a message (optional)" : "Type a message..."}
-              className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              disabled={!isConnected || uploadState?.status === 'uploading'}
-            />
+            <div className="relative flex-1">
+              <input
+                type="text"
+                value={content}
+                onChange={handleInputChange}
+                placeholder={uploadedFile ? "Add a message (optional)" : "Type a message..."}
+                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
+                  isAICommand ? 'font-mono' : ''
+                }`}
+                disabled={!isConnected || uploadState?.status === 'uploading'}
+              />
+              {isAICommand && (
+                <div className="absolute top-0 left-0 px-4 py-2 pointer-events-none">
+                  <span className="text-blue-500 font-mono">/ai</span>
+                  <span className="font-mono">{content.slice(3)}</span>
+                </div>
+              )}
+            </div>
             <input
               type="file"
               ref={fileInputRef}
