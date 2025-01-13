@@ -1,64 +1,88 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import React, { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react'
 import { io, Socket } from 'socket.io-client'
-import { useRouter } from 'next/navigation'
-import { Channel, Message } from '@prisma/client'
-import { TokenManager } from '@/lib/tokenManager'
+import { TokenManager } from '../lib/tokenManager'
+import { Message, Channel } from '@prisma/client'
+import { useRouter, usePathname } from 'next/navigation'
+import { MessageWithAuthorAndReactions } from '../types/message'
 
-type MessageWithAuthor = Message & {
-  author: {
-    id: string
-    name: string | null
-    email: string | null
-    status: string
-  }
+// Types
+interface ServerToClientEvents {
+  message_received: (message: MessageWithAuthorAndReactions) => void
+  message_updated: (message: MessageWithAuthorAndReactions) => void
+  dm_message_received: (message: MessageWithAuthorAndReactions) => void
+  channel_created: (channel: Channel) => void
+  channel_delete: (channelId: string) => void
+  channel_error: (error: { message: string }) => void
+  initial_statuses: (statuses: Array<{ userId: string, status: string, updatedAt: Date }>) => void
+  status_update: (status: { userId: string, status: string, updatedAt: Date }) => void
+  reaction_added: (data: { messageId: string, reaction: any }) => void
+  reaction_removed: (data: { messageId: string, reactionId: string }) => void
+  dm_created: (chat: any) => void
 }
 
-type MessageWithAuthorAndReactions = Message & {
-  author: {
-    id: string
-    name: string | null
-    email: string | null
-    status: string
-  }
-  reactions: {
-    id: string
-    emoji: string
-    user: {
-      id: string
-      name: string | null
+interface ClientToServerEvents {
+  join_channel: (data: { channelId: string }) => void
+  join_dm: (data: { dmId: string }) => void
+  new_message: (data: { 
+    content: string
+    channelId: string
+    parentId?: string
+    isDM?: boolean
+    attachment?: {
+      url: string
+      type: string
+      name: string
     }
-  }[]
+  }) => void
+  new_dm_message: (data: { 
+    content: string
+    dmId: string
+    parentId?: string
+    attachment?: {
+      url: string
+      type: string
+      name: string
+    }
+  }) => void
+  channel_create: (data: { name: string, description?: string }) => void
+  channel_delete: (channelId: string) => void
+  status: (data: { userId: string, status: string, updatedAt: Date }) => void
+  add_reaction: (data: { messageId: string, emoji: string, channelId: string }) => void
+  user_signup: (data: any) => void
 }
 
-// Create a shared socket instance
-let sharedSocket: Socket | null = null
-
-// Keep cleanup only for logout
-export const cleanupSocket = () => {
-  if (sharedSocket) {
-    console.log('Cleaning up socket connection on logout')
-    sharedSocket.disconnect()
-    sharedSocket = null
-  }
+interface SocketContextType {
+  socket: Socket<ServerToClientEvents, ClientToServerEvents> | null
+  isConnected: boolean
+  currentRoom: string | null
+  error: Error | null
+  connect: () => void
+  disconnect: () => void
+  joinRoom: (roomId: string, isDM?: boolean) => void
 }
+
+interface SocketProviderProps {
+  children: ReactNode
+  userId: string
+}
+
+// Context
+const SocketContext = createContext<SocketContextType | null>(null)
+
+// Singleton socket instance
+let sharedSocket: Socket<ServerToClientEvents, ClientToServerEvents> | null = null
 
 // Helper function to get or create socket
 const getSocket = (userId: string) => {
   if (sharedSocket) return sharedSocket
 
-  console.log('Creating socket with exact userId value:', {
-    userId,
-    type: typeof userId,
-    length: userId.length
-  })
-
   const socketUrl = process.env.NODE_ENV === 'production'
     ? process.env.NEXT_PUBLIC_APP_URL
     : 'http://localhost:3000'
 
-  console.log('Connecting to socket URL:', socketUrl)
+  console.log('🔌 Creating socket connection:', { userId, url: socketUrl })
 
   sharedSocket = io(socketUrl, {
     auth: { userId },
@@ -66,334 +90,313 @@ const getSocket = (userId: string) => {
     reconnectionDelay: 1000,
     transports: ['websocket', 'polling'],
     timeout: 10000,
-    forceNew: true
-  })
-
-  // Debug all socket events
-  // sharedSocket.onAny((eventName, ...args) => {
-  //   console.log('=== Client Socket Event ===', {
-  //     event: eventName,
-  //     args,
-  //     socketId: sharedSocket?.id
-  //   })
-  // })
-
-  sharedSocket.on('connect_error', (error) => {
-    console.log('Socket connect error:', {
-      message: error.message,
-      name: error.name,
-      stack: error.stack
-    })
   })
 
   return sharedSocket
 }
 
-
-// Utility to emit socket events from the server or client
-export const emitSocketEvent = async (event: string, data: any) => {
-  // This will be implemented in a separate server-side file
-  return Promise.resolve();
-};
-// Message socket hook
-// export function useSocket(channelId: string) {
-//   const [isConnected, setIsConnected] = useState(false)
-//   const socketRef = useRef<Socket>()
-//   const currentChannelRef = useRef(channelId) // Track current channel
-
-//   useEffect(() => {
-//     const socket = getSocket()
-//     if (!socket) return
-
-//     socketRef.current = socket
-//     currentChannelRef.current = channelId // Update current channel
-
-//     const handleConnect = () => {
-//       console.log('Socket connected with ID:', socket.id)
-//       setIsConnected(true)
-//       socket.emit('join_channel', channelId)
-//     }
-
-//     const handleMessage = (message: any) => {
-//       // Only handle messages for current channel
-//       if (message.channelId === currentChannelRef.current) {
-//         // Handle message
-//       }
-//     }
-
-//     if (socket.connected) {
-//       handleConnect()
-//     }
-
-//     socket.on('connect', handleConnect)
-//     socket.on('message_received', handleMessage)
-
-//     return () => {
-//       socket.off('connect', handleConnect)
-//       socket.off('message_received', handleMessage)
-//     }
-//   }, [channelId]) // Re-run effect when channel changes
-
-//   return {
-//     socket: socketRef.current,
-//     isConnected,
-//     sendMessage: (content: string) => {
-//       if (!socketRef.current?.connected) return
-//       socketRef.current.emit('new_message', {
-//         content,
-//         channelId,
-//       })
-//     }
-//   }
-// }
-
-export function useSocket(identifier: { channelId?: string; DmID?: string }) {
-  const [isConnected, setIsConnected] = useState(false);
-  const socketRef = useRef<Socket>();
-  const currentIdentifierRef = useRef(identifier);
-
-  useEffect(() => {
-    const userId = TokenManager.getUserId();
-    if (!userId) {
-      console.log('No userId available');
-      return;
-    }
-
-    const socket = getSocket(userId);
-    if (!socket) return;
-
-    socketRef.current = socket;
-    currentIdentifierRef.current = identifier;
-
-    const handleConnect = () => {
-      console.log("Socket connected with ID:", socket.id);
-      setIsConnected(true);
-
-      if (identifier.channelId) {
-        socket.emit("join_channel", identifier.channelId);
-      } else if (identifier.DmID) {
-        socket.emit("join_dm", identifier.DmID);
-      }
-    };
-
-    const handleDisconnect = () => {
-      console.log('Socket disconnected');
-      setIsConnected(false);
-    };
-
-    if (socket.connected) {
-      handleConnect();
-    }
-
-    socket.on("connect", handleConnect);
-    socket.on("disconnect", handleDisconnect);
-
-    return () => {
-      socket.off("connect", handleConnect);
-      socket.off("disconnect", handleDisconnect);
-    };
-  }, [identifier]);
-
-  return {
-    socket: socketRef.current,
-    isConnected
-  };
-}
-
-
-// Channel socket hook
-export function useChannelSocket() {
+// Provider
+export function SocketProvider({ children, userId }: SocketProviderProps) {
   const [isConnected, setIsConnected] = useState(false)
-  const socketRef = useRef<Socket>()
+  const [currentRoom, setCurrentRoom] = useState<string | null>(null)
+  const [error, setError] = useState<Error | null>(null)
   const router = useRouter()
 
   useEffect(() => {
-    const userId = TokenManager.getUserId();
     if (!userId) {
-      console.log('No userId available');
-      return;
+      console.log('🔌 No userId provided to SocketProvider')
+      return
     }
 
-    const socket = getSocket(userId)
-    if (!socket) return
+    try {
+      console.log('🔌 Initializing socket with userId:', userId)
+      // Get or create the shared socket
+      const socket = getSocket(userId)
 
-    socketRef.current = socket
+      const onConnect = () => {
+        console.log('🔌 Socket connected successfully:', socket.id)
+        setIsConnected(true)
+        setError(null)
+      }
 
-    const handleConnect = () => {
-      console.log('Channel socket connected with ID:', socket.id)
-      setIsConnected(true)
+      const onDisconnect = (reason: string) => {
+        console.log('🔌 Socket disconnected:', reason)
+        setIsConnected(false)
+        setCurrentRoom(null)
+      }
+
+      const onConnectError = (err: Error) => {
+        console.error('🔌 Socket connect error:', err)
+        setError(err)
+      }
+
+      const onChannelError = (error: { message: string }) => {
+        console.error('🔌 Channel error:', error.message)
+        setError(new Error(error.message))
+      }
+
+      // Setup listeners
+      socket.on('connect', onConnect)
+      socket.on('disconnect', onDisconnect)
+      socket.on('connect_error', onConnectError)
+      socket.on('channel_error', onChannelError)
+
+      if (socket.connected) {
+        console.log('🔌 Socket already connected:', socket.id)
+        onConnect()
+      } else {
+        console.log('🔌 Socket not connected, attempting connection...')
+      }
+
+      // Cleanup
+      return () => {
+        console.log('🔌 Cleaning up socket listeners')
+        socket.off('connect', onConnect)
+        socket.off('disconnect', onDisconnect)
+        socket.off('connect_error', onConnectError)
+        socket.off('channel_error', onChannelError)
+      }
+    } catch (err) {
+      console.error('🔌 Error initializing socket:', err)
+      setError(err instanceof Error ? err : new Error(String(err)))
     }
+  }, [userId])
 
-    const handleDisconnect = () => {
-      console.log('Channel socket disconnected')
-      setIsConnected(false)
-    }
-
-    const handleError = (error: Error) => {
-      console.error('Channel socket connection error:', error)
-    }
-
-    if (socket.connected) {
-      handleConnect()
-    }
-
-    socket.on('connect', handleConnect)
-    socket.on('disconnect', handleDisconnect)
-    socket.on('connect_error', handleError)
-    socket.on('channel_created', (channel: Channel) => {
-      console.log('Channel created event received:', channel)
-      router.refresh()
-    })
-    socket.on('channel_delete', (channelId: string) => {
-      console.log('Channel deleted event received:', channelId)
-      router.push('/channels/general')
-      router.refresh()
-    })
-    socket.on('channel_error', (error: { message: string }) => {
-      console.error('Channel operation failed:', error.message)
-    })
-
-    return () => {
-      socket.off('connect', handleConnect)
-      socket.off('disconnect', handleDisconnect)
-      socket.off('connect_error', handleError)
-      socket.off('channel_created', (channel: Channel) => {
-        console.log('Channel created event received:', channel)
-        router.refresh()
-      })
-      socket.off('channel_delete', (channelId: string) => {
-        console.log('Channel deleted event received:', channelId)
-        router.push('/channels/general')
-      })
-      socket.off('channel_error', (error: { message: string }) => {
-        console.error('Channel operation failed:', error.message)
-      })
-    }
-  }, [router])
-
-  return {
+  const value: SocketContextType = {
+    socket: sharedSocket,
     isConnected,
-    createChannel: (name: string, description?: string) => {
-      if (!socketRef.current) {
-        console.error('Socket ref is null')
-        return
+    currentRoom,
+    error,
+    connect: () => sharedSocket?.connect(),
+    disconnect: () => {
+      if (sharedSocket) {
+        sharedSocket.disconnect()
+        sharedSocket = null
       }
-      if (!socketRef.current.connected) {
-        console.error('Socket not connected, status:', socketRef.current.connected)
-        return
-      }
-      console.log('Socket status before create:', {
-        id: socketRef.current.id,
-        connected: socketRef.current.connected,
-        disconnected: socketRef.current.disconnected
-      })
-      socketRef.current.emit('channel_create', { name, description })
     },
-    deleteChannel: (channelId: string) => {
-      if (!socketRef.current) {
-        console.error('Socket ref is null')
+    joinRoom: (roomId: string, isDM = false) => {
+      if (!sharedSocket || !isConnected) {
+        console.log('Cannot join room - socket not connected')
         return
       }
-      if (!socketRef.current.connected) {
-        console.error('Socket not connected, status:', socketRef.current.connected)
-        return
+
+      try {
+        if (currentRoom === roomId) {
+          console.log('Already in room:', roomId)
+          return
+        }
+
+        if (isDM) {
+          sharedSocket.emit('join_dm', { dmId: roomId })
+        } else {
+          sharedSocket.emit('join_channel', { channelId: roomId })
+        }
+        
+        setCurrentRoom(roomId)
+        console.log(Joined ${isDM ? 'DM' : 'channel'} room:, roomId)
+      } catch (err) {
+        console.error('Error joining room:', err)
+        setError(err instanceof Error ? err : new Error(String(err)))
       }
-      console.log('Socket status before delete:', {
-        id: socketRef.current.id,
-        connected: socketRef.current.connected,
-        disconnected: socketRef.current.disconnected
-      })
-      console.log('About to emit channel_delete with channelId:', channelId)
-      socketRef.current.emit('channel_delete', channelId)
-      console.log('Emitted channel_delete event')
     }
   }
+
+  return (
+    <SocketContext.Provider value={value}>
+      {children}
+    </SocketContext.Provider>
+  )
 }
 
-// Keep all existing code and add this new hook
-export function useDMMessages(dmId: string) {
+// Hook for consuming socket context
+export function useSocket() {
+  const context = useContext(SocketContext)
+  if (!context) {
+    throw new Error('useSocket must be used within a SocketProvider')
+  }
+  return context
+}
+
+// Room-specific hook
+export function useSocketRoom({ channelId, isDM = false }: { channelId: string, isDM?: boolean }) {
+  const { socket, isConnected, currentRoom, joinRoom } = useSocket()
   const [messages, setMessages] = useState<MessageWithAuthorAndReactions[]>([])
-  const [isConnected, setIsConnected] = useState(false)
-  const socketRef = useRef<Socket>()
+  const [isJoining, setIsJoining] = useState(false)
 
   useEffect(() => {
-    const userId = TokenManager.getUserId()
-    if (!userId) {
-      console.log('No userId available')
-      return
+    if (!socket || !isConnected || isJoining) return
+
+    setIsJoining(true)
+    joinRoom(channelId, isDM)
+    setIsJoining(false)
+
+    const onMessage = (message: MessageWithAuthorAndReactions) => {
+      if (message.channelId === channelId || message.directChatId === channelId) {
+        setMessages(prev => [...prev, message])
+      }
     }
 
-    const socket = getSocket(userId)
-    if (!socket) return
-
-    socketRef.current = socket
-
-    const handleConnect = () => {
-      console.log('DM socket connected with ID:', socket.id)
-      setIsConnected(true)
-      socket.emit('join_dm', dmId)
+    const onMessageUpdated = (message: MessageWithAuthorAndReactions) => {
+      if (message.channelId === channelId || message.directChatId === channelId) {
+        setMessages(prev => prev.map(m => m.id === message.id ? message : m))
+      }
     }
 
-    const handleMessage = (message: MessageWithAuthorAndReactions) => {
-      setMessages(prev => [...prev, message])
-    }
-
-    if (socket.connected) {
-      handleConnect()
-    }
-
-    socket.on('connect', handleConnect)
-    socket.on('message_received', handleMessage)
+    socket.on(isDM ? 'dm_message_received' : 'message_received', onMessage)
+    socket.on('message_updated', onMessageUpdated)
 
     return () => {
-      socket.off('connect', handleConnect)
-      socket.off('message_received', handleMessage)
+      socket.off(isDM ? 'dm_message_received' : 'message_received', onMessage)
+      socket.off('message_updated', onMessageUpdated)
     }
-  }, [dmId])
+  }, [socket, isConnected, channelId, isDM, joinRoom])
+
+  const sendMessage = (content: string, parentId?: string, attachment?: { url: string, type: string, name: string }) => {
+    if (!socket || !isConnected) return
+
+    if (isDM) {
+      socket.emit('new_dm_message', {
+        content,
+        dmId: channelId,
+        parentId,
+        attachment
+      })
+    } else {
+      socket.emit('new_message', {
+        content,
+        channelId,
+        parentId,
+        isDM,
+        attachment
+      })
+    }
+  }
 
   return {
-    messages,
+    socket,
     isConnected,
-    socket: socketRef.current
+    currentRoom,
+    messages,
+    sendMessage
   }
 }
 
-// Add this new hook
-export function useDMSocket() {
-  const [isConnected, setIsConnected] = useState(false)
-  const socketRef = useRef<Socket>()
+// Channel Operations Hook
+export function useChannelOperations() {
+  const context = useContext(SocketContext)
+  if (!context) {
+    throw new Error('useChannelOperations must be used within a SocketProvider')
+  }
+
+  const { socket, isConnected } = context
   const router = useRouter()
+  const pathname = usePathname()
+  const segments = pathname.split('/')
+  const currentChannelName = segments[2] // /channels/[name]
 
   useEffect(() => {
-    const userId = TokenManager.getUserId()
-    if (!userId) {
-      console.log('No userId available')
+    if (!socket) return
+
+    const onChannelDeleted = async (channelId: string) => {
+      console.log('🔌 Channel deleted:', channelId)
+      
+      // If we're in a channel route
+      if (segments[1] === 'channels' && currentChannelName) {
+        try {
+          // Check if the deleted channel is the current one
+          const response = await fetch(/api/channels/${currentChannelName})
+          const channel = await response.json()
+          
+          if (channel?.id === channelId) {
+            console.log('🔌 Current channel was deleted, redirecting to general')
+            router.push('/channels/general')
+          }
+        } catch (error) {
+          // If we can't fetch the channel info (likely because it was deleted)
+          // redirect to general to be safe
+          console.log('🔌 Error checking channel, redirecting to general:', error)
+          router.push('/channels/general')
+        }
+      }
+    }
+
+    socket.on('channel_delete', onChannelDeleted)
+
+    return () => {
+      socket.off('channel_delete', onChannelDeleted)
+    }
+  }, [socket, router, pathname, segments, currentChannelName])
+
+  const createChannel = (name: string, description?: string) => {
+    if (!socket || !isConnected) {
+      console.error('Cannot create channel - socket not connected')
       return
     }
 
-    const socket = getSocket(userId)
-    if (!socket) return
+    console.log('🔌 Emitting channel_create event:', { name, description })
+    socket.emit('channel_create', { name, description })
+  }
 
-    socketRef.current = socket
-
-    const handleConnect = () => {
-      console.log('DM socket connected with ID:', socket.id)
-      setIsConnected(true)
+  const deleteChannel = (channelId: string) => {
+    if (!socket || !isConnected) {
+      console.error('Cannot delete channel - socket not connected')
+      return
     }
 
-    if (socket.connected) {
-      handleConnect()
-    }
+    console.log('🔌 Emitting channel_delete event:', channelId)
+    socket.emit('channel_delete', channelId)
 
-    socket.on('connect', handleConnect)
-
-    return () => {
-      socket.off('connect', handleConnect)
+    // If we're in the channel being deleted, redirect immediately
+    if (segments[1] === 'channels' && currentChannelName) {
+      // Fetch current channel ID to compare with the deleted channel ID
+      fetch(/api/channels/${currentChannelName})
+        .then(response => response.json())
+        .then(channel => {
+          if (channel?.id === channelId) {
+            console.log('🔌 Current channel was deleted, redirecting to general')
+            router.push('/channels/general')
+          }
+        })
+        .catch(() => {
+          // If we can't fetch the channel info, redirect to general to be safe
+          console.log('🔌 Error checking channel, redirecting to general')
+          router.push('/channels/general')
+        })
     }
-  }, [router])
+  }
 
   return {
+    socket,
     isConnected,
-    socket: socketRef.current
+    createChannel,
+    deleteChannel
+  }
+}
+
+// Reaction hook
+export function useReactions(messageId: string, channelId: string) {
+  const { socket, isConnected } = useSocket()
+
+  const toggleReaction = (emoji: string) => {
+    if (!socket || !isConnected) return
+
+    socket.emit('add_reaction', {
+      messageId,
+      emoji,
+      channelId
+    })
+  }
+
+  return {
+    toggleReaction
+  }
+}
+
+// Cleanup function for logout
+export function cleanupSocket() {
+  if (sharedSocket) {
+    console.log('Cleaning up socket connection')
+    sharedSocket.disconnect()
+    sharedSocket = null
   }
 } 

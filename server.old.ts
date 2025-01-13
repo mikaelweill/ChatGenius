@@ -2,7 +2,9 @@ import { createServer } from 'http'
 import { parse } from 'url'
 import next from 'next'
 import { Server } from 'socket.io'
+import { jwtVerify } from 'jose'
 import { prisma } from './lib/prisma'
+import path from 'path'
 
 const dev = process.env.NODE_ENV !== 'production'
 const app = next({ dev })
@@ -357,7 +359,7 @@ app.prepare().then(() => {
         const newChannel = await prisma.channel.create({
           data: {
             name: data.name,
-            description: data.description || Channel for ${data.name}
+            description: data.description || `Channel for ${data.name}`
           }
         })
         
@@ -460,7 +462,7 @@ app.prepare().then(() => {
         await Promise.all(createDMs);
 
         console.log(
-          DMs created between new user ${data.userId} and existing users
+          `DMs created between new user ${data.userId} and existing users`
         );
 
         // Broadcast to all clients that a new user has signed up
@@ -586,6 +588,6 @@ app.prepare().then(() => {
 
   const port = process.env.PORT || 3000
   server.listen(port, () => {
-    console.log(> Ready on http://localhost:${port} - env ${process.env.NODE_ENV})
+    console.log(`> Ready on http://localhost:${port} - env ${process.env.NODE_ENV}`)
   })
 }) 
