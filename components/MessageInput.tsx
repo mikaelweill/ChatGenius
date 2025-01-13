@@ -50,34 +50,31 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if ((!content.trim() && !uploadedFile) || !isConnected || !socket) return
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if ((!content.trim() && !uploadedFile) || !isConnected || !socket) return;
 
-    try {
-      // Check if it's a valid AI command
-      const commandResult = parseAICommand(content)
-      
-      socket.emit('new_message', { 
-        content: content.trim(), 
-        channelId,
-        isDM,
-        isAICommand: commandResult.isCommand,
-        ...(uploadedFile && {
-          attachment: {
-            url: uploadedFile.fileKey,
-            type: uploadedFile.fileType,
-            name: uploadedFile.fileName
-          }
-        })
+    const messageContent = content.startsWith('/ai') ? content.replace('/ai', '🤖') : content;
+
+    const messageData = {
+      content: messageContent,
+      channelId,
+      isDM,
+      isAICommand: content.startsWith('/ai'),
+      ...(uploadedFile && {
+        attachment: {
+          url: uploadedFile.fileKey,
+          type: uploadedFile.fileType,
+          name: uploadedFile.fileName
+        }
       })
-      setContent('')
-      setUploadedFile(null)
-      setShowAIFormatting(false)
-    } catch (error) {
-      console.error('Error sending message:', error)
-    }
-  }
+    };
+
+    socket.emit('new_message', messageData);
+    setContent('');
+    setUploadedFile(null);
+    setShowAIFormatting(false);
+  };
 
   const handleFileButtonClick = () => {
     fileInputRef.current?.click();

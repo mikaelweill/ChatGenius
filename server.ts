@@ -349,12 +349,7 @@ app.prepare().then(() => {
                 }
               }
             })
-
-            if (data.isDM) {
               io.to(data.channelId).emit('message_received', aiMessage)
-            } else {
-              io.to(data.channelId).emit('message_received', aiMessage)
-            }
           } catch (error) {
             console.error('Error processing AI command:', error)
           }
