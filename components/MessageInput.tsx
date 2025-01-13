@@ -5,7 +5,7 @@ import { useSocketRoom } from '@/hooks/useSocket'
 import { FileDropZone } from './FileDropZone'
 import { uploadFile } from '@/lib/uploadUtils'
 import { eventBus } from '@/lib/eventBus'
-import { parseAICommand } from '@/lib/commandParser'
+import { parseAICommand, shouldShowAIFormatting } from '@/lib/commandParser'
 
 interface UploadState {
   progress: number;
@@ -21,7 +21,7 @@ interface UploadedFile {
 
 export function MessageInput({ channelId, isDM = false }: { channelId: string, isDM?: boolean }) {
   const [content, setContent] = useState('')
-  const [isAICommand, setIsAICommand] = useState(false)
+  const [showAIFormatting, setShowAIFormatting] = useState(false)
   const [uploadState, setUploadState] = useState<UploadState | null>(null)
   const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -55,10 +55,14 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
     if ((!content.trim() && !uploadedFile) || !isConnected || !socket) return
 
     try {
+      // Check if it's a valid AI command
+      const commandResult = parseAICommand(content)
+      
       socket.emit('new_message', { 
         content: content.trim(), 
         channelId,
         isDM,
+        isAICommand: commandResult.isCommand,
         ...(uploadedFile && {
           attachment: {
             url: uploadedFile.fileKey,
@@ -68,7 +72,7 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
         })
       })
       setContent('')
-      setUploadedFile(null) // Clear the uploaded file after sending
+      setUploadedFile(null)
     } catch (error) {
       console.error('Error sending message:', error)
     }
@@ -97,9 +101,8 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
     const newContent = e.target.value
     setContent(newContent)
     
-    // Check if it's an AI command
-    const commandResult = parseAICommand(newContent)
-    setIsAICommand(commandResult.isCommand)
+    // Check for UI formatting
+    setShowAIFormatting(shouldShowAIFormatting(newContent))
   }
 
   useEffect(() => {
@@ -155,16 +158,16 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
                 onChange={handleInputChange}
                 placeholder={uploadedFile ? "Add a message (optional)" : "Type a message..."}
                 className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
-                  isAICommand ? 'font-mono' : ''
+                  showAIFormatting ? 'font-mono' : ''
                 }`}
                 disabled={!isConnected || uploadState?.status === 'uploading'}
               />
-              {isAICommand && (
-                <div className="absolute top-0 left-0 px-4 py-2 pointer-events-none">
-                  <span className="text-blue-500 font-mono">/ai</span>
-                  <span className="font-mono">{content.slice(3)}</span>
-                </div>
-              )}
+              <div className={`absolute top-0 left-0 px-4 py-2 w-full pointer-events-none ${
+                showAIFormatting ? 'opacity-100' : 'opacity-0'
+              }`}>
+                <span className="text-blue-500 font-mono">/ai</span>
+                <span className="font-mono">{content.slice(3)}</span>
+              </div>
             </div>
             <input
               type="file"
