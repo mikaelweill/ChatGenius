@@ -74,7 +74,7 @@ interface SocketProviderProps {
 const SocketContext = createContext<SocketContextType | null>(null)
 
 // Singleton socket instance
-let sharedSocket: Socket<ServerToClientEvents, ClientToServerEvents> | null = null
+export let sharedSocket: Socket<ServerToClientEvents, ClientToServerEvents> | null = null
 
 // Helper function to get or create socket
 const getSocket = (userId: string) => {
@@ -87,10 +87,14 @@ const getSocket = (userId: string) => {
   console.log('🔌 Creating socket connection:', { userId, url: socketUrl })
 
   sharedSocket = io(socketUrl, {
-    auth: { userId },
+    auth: { 
+      userId,
+      connectionId: `${userId}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+    },
+    forceNew: true,
+    transports: ['websocket', 'polling'],
     reconnectionAttempts: 5,
     reconnectionDelay: 1000,
-    transports: ['websocket', 'polling'],
     timeout: 10000,
   })
 

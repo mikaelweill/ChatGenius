@@ -4,6 +4,7 @@ import { createContext, useEffect, useState } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import type { Session } from '@supabase/auth-helpers-nextjs'
 import { useRouter } from 'next/navigation'
+import { sharedSocket } from '@/hooks/useSocket'
 
 export const SessionContext = createContext<Session | null>(null)
 
@@ -26,6 +27,16 @@ export function SessionProvider({ children }: SessionProviderProps) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        // Clean up any existing socket before setting new session
+        if (sharedSocket) {
+          console.log('🔌 Cleaning up existing socket connection')
+          sharedSocket.removeAllListeners()
+          sharedSocket.disconnect()
+          console.log('🔌 Socket connection cleaned up')
+          sharedSocket = null
+        }
+      }
       setSession(session)
       if (!session) {
         router.push('/signin')
