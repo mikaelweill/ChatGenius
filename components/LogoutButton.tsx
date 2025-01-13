@@ -10,7 +10,7 @@ interface Props {
 
 export function LogoutButton({ userId }: Props) {
   const router = useRouter()
-  const { socket } = useSocket({})
+  const { socket } = useSocket()
   
   const handleLogout = async () => {
     try {

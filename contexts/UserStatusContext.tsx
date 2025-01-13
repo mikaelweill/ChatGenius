@@ -22,7 +22,7 @@ const UserStatusContext = createContext<UserStatusContextType>({
 
 export function UserStatusProvider({ children }: { children: React.ReactNode }) {
   const [statuses, setStatuses] = useState<Record<string, UserStatus>>({})
-  const { socket, isConnected } = useSocket({})
+  const { socket, isConnected } = useSocket()
   const userId = TokenManager.getUserId()
 
   // useEffect(() => {

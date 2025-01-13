@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef, useContext } from 'react'
-import { useSocket } from '@/hooks/useSocket'
+import { useSocketRoom } from '@/hooks/useSocket'
 import { Message, Reaction } from '@prisma/client'
 import { Username } from './Username'
 import { SessionContext } from '@/components/SessionProvider'
@@ -59,14 +59,14 @@ const handleDownload = async (url: string, fileName: string) => {
 
 export function MessageList({ initialMessages, channelId, currentUserId, isDM = false, messageIdToScrollTo, onThreadOpen }: MessageListProps) {
   const [messages, setMessages] = useState<MessageWithAuthorAndReactions[]>(initialMessages)
-  const { socket, isConnected } = useSocket({ channelId })
+  const { socket, isConnected, messages: socketMessages } = useSocketRoom({ channelId, isDM })
   const containerRef = useRef<HTMLDivElement>(null)
   const session = useContext(SessionContext)
   const [showEmojiPicker, setShowEmojiPicker] = useState<string | null>(null)
   const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null)
   const shouldAutoScroll = useRef(true)
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null)
-  const [attachmentUrls, setAttachmentUrls] = useState<Record<string, string>>({});
+  const [attachmentUrls, setAttachmentUrls] = useState<Record<string, string>>({})
 
   const isNearBottom = () => {
     const container = containerRef.current
@@ -136,10 +136,11 @@ export function MessageList({ initialMessages, channelId, currentUserId, isDM = 
     }
   }, [socket])
 
+  // Handle reactions
   useEffect(() => {
     if (!socket) return
 
-    socket.on('reaction_added', ({ messageId, reaction }) => {
+    const handleReactionAdded = ({ messageId, reaction }: { messageId: string, reaction: Reaction & { user: { id: string, name: string | null } } }) => {
       setMessages(prev => prev.map(message => {
         if (message.id === messageId) {
           return {
@@ -149,9 +150,9 @@ export function MessageList({ initialMessages, channelId, currentUserId, isDM = 
         }
         return message
       }))
-    })
+    }
 
-    socket.on('reaction_removed', ({ messageId, reactionId }) => {
+    const handleReactionRemoved = ({ messageId, reactionId }: { messageId: string, reactionId: string }) => {
       setMessages(prev => prev.map(message => {
         if (message.id === messageId) {
           return {
@@ -161,11 +162,14 @@ export function MessageList({ initialMessages, channelId, currentUserId, isDM = 
         }
         return message
       }))
-    })
+    }
+
+    socket.on('reaction_added', handleReactionAdded)
+    socket.on('reaction_removed', handleReactionRemoved)
 
     return () => {
-      socket.off('reaction_added')
-      socket.off('reaction_removed')
+      socket.off('reaction_added', handleReactionAdded)
+      socket.off('reaction_removed', handleReactionRemoved)
     }
   }, [socket])
 

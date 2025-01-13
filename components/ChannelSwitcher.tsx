@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Channel } from '@prisma/client'
 import Link from 'next/link'
 import { Trash2, Plus } from 'lucide-react'
-import { useChannelSocket } from '@/hooks/useSocket'
+import { useChannelOperations } from '@/hooks/useSocket'
 import { DirectMessagesList } from './DirectMessagesList'
 import { usePathname } from 'next/navigation'
 import { DirectChatWithParticipants } from '@/types/chat'
@@ -15,13 +15,44 @@ interface ChannelSwitcherProps {
   currentUserId: string
 }
 
-export function ChannelSwitcher({ channels, directChats, currentUserId }: ChannelSwitcherProps) {
+export function ChannelSwitcher({ channels: initialChannels, directChats, currentUserId }: ChannelSwitcherProps) {
   const [isCreating, setIsCreating] = useState(false)
   const [newChannelName, setNewChannelName] = useState('')
-  const { isConnected, createChannel, deleteChannel } = useChannelSocket()
+  const [channels, setChannels] = useState(initialChannels)
+  const { isConnected, createChannel, deleteChannel, socket } = useChannelOperations()
   const pathname = usePathname()
   const segments = pathname.split('/')
   const currentChannelId = channels.find(c => c.name === segments[2])?.id || ''
+
+  // Initialize channels from props
+  useEffect(() => {
+    setChannels(initialChannels)
+  }, [initialChannels])
+
+  // Socket event listeners
+  useEffect(() => {
+    if (!socket) return
+
+    const onChannelCreated = (channel: Channel) => {
+      console.log('🔌 Channel created:', channel)
+      setChannels(prev => [...prev, channel])
+    }
+
+    const onChannelDeleted = (channelId: string) => {
+      console.log('🔌 Channel deleted:', channelId)
+      setChannels(prev => prev.filter(c => c.id !== channelId))
+    }
+
+    socket.on('channel_created', onChannelCreated)
+    socket.on('channel_delete', onChannelDeleted)
+
+    return () => {
+      socket.off('channel_created', onChannelCreated)
+      socket.off('channel_delete', onChannelDeleted)
+    }
+  }, [socket])
+
+  console.log('🔌 ChannelSwitcher Socket Status:', { isConnected })
 
   const isDuplicateName = channels.some(
     channel => channel.name.toLowerCase() === newChannelName.toLowerCase()
@@ -31,14 +62,31 @@ export function ChannelSwitcher({ channels, directChats, currentUserId }: Channe
     e.preventDefault()
     if (!newChannelName.trim() || isDuplicateName) return
 
-    //console.log('Attempting to create channel:', newChannelName)
-    createChannel(newChannelName)
-    setNewChannelName('')
-    setIsCreating(false)
+    console.log('🔌 Creating channel:', { 
+      isConnected, 
+      newChannelName,
+      createChannel: !!createChannel,
+      socket: !!socket
+    })
+    
+    try {
+      createChannel(newChannelName)
+      console.log('🔌 Channel creation request sent')
+      setNewChannelName('')
+      setIsCreating(false)
+    } catch (error) {
+      console.error('🔌 Error creating channel:', error)
+    }
   }
 
   const handleDeleteChannel = async (channel: Channel) => {
-    //console.log('Attempting to delete channel:', { id: channel.id, name: channel.name })
+    console.log('🔌 Deleting channel:', { 
+      isConnected, 
+      channelId: channel.id,
+      channelName: channel.name,
+      deleteChannel: !!deleteChannel 
+    })
+    
     deleteChannel(channel.id)
   }
 
@@ -133,4 +181,4 @@ export function ChannelSwitcher({ channels, directChats, currentUserId }: Channe
       />
     </div>
   )
-} 
+}

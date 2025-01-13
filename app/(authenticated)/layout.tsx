@@ -6,6 +6,8 @@ import GlobalSearch from '@/components/GlobalSearch'
 import { MessageInput } from '@/components/MessageInput'
 import { getServerUser } from '@/lib/auth'
 import { headers } from 'next/headers'
+import { SocketProvider } from '@/hooks/useSocket'
+import { UserStatusProvider } from '@/contexts/UserStatusContext'
 
 export default async function AuthenticatedLayout({
   children,
@@ -50,34 +52,38 @@ export default async function AuthenticatedLayout({
   }))
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <aside className="w-64 bg-gray-800 text-white flex flex-col flex-shrink-0">
-        <div className="p-4 border-b border-gray-700">
-          <h1 className="text-xl font-bold">ChatGenius</h1>
+    <SocketProvider userId={user.id}>
+      <UserStatusProvider>
+        <div className="flex h-screen overflow-hidden">
+          <aside className="w-64 bg-gray-800 text-white flex flex-col flex-shrink-0">
+            <div className="p-4 border-b border-gray-700">
+              <h1 className="text-xl font-bold">ChatGenius</h1>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <ChannelSwitcher 
+                channels={channels}
+                directChats={dms}
+                currentUserId={user.id}
+              />
+            </div>
+          </aside>
+          <main className="flex-1 flex flex-col overflow-hidden">
+            <header className="h-16 border-b flex items-center px-6 gap-4 flex-shrink-0">
+              <div className="flex-1">
+                <GlobalSearch userId={user.id} />
+              </div>
+              <div className="ml-auto">
+                <LogoutButton userId={user.id} />
+              </div>
+            </header>
+            <div className="flex-1 overflow-hidden flex flex-col">
+              <div className="flex-1 overflow-y-auto">
+                {children}
+              </div>
+            </div>
+          </main>
         </div>
-        <div className="flex-1 overflow-y-auto">
-          <ChannelSwitcher 
-            channels={channels}
-            directChats={dms}
-            currentUserId={user.id}
-          />
-        </div>
-      </aside>
-      <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-16 border-b flex items-center px-6 gap-4 flex-shrink-0">
-          <div className="flex-1">
-            <GlobalSearch userId={user.id} />
-          </div>
-          <div className="ml-auto">
-            <LogoutButton userId={user.id} />
-          </div>
-        </header>
-        <div className="flex-1 overflow-hidden flex flex-col">
-          <div className="flex-1 overflow-y-auto">
-            {children}
-          </div>
-        </div>
-      </main>
-    </div>
+      </UserStatusProvider>
+    </SocketProvider>
   )
 } 

@@ -3,7 +3,7 @@
 import { X, Smile } from 'lucide-react'
 import { Message, Reaction } from '@prisma/client'
 import { useState, useEffect } from 'react'
-import { useSocket } from '@/hooks/useSocket'
+import { useSocketRoom } from '@/hooks/useSocket'
 import { Username } from './Username'
 import { MessageWithAuthorAndReactions } from '@/types/message'
 
@@ -19,7 +19,7 @@ export function ThreadPanel({ isOpen, onClose, originalMessage, channelId, curre
   const [message, setMessage] = useState<MessageWithAuthorAndReactions | null>(null)
   const [mainReplyContent, setMainReplyContent] = useState('')
   const [showEmojiPicker, setShowEmojiPicker] = useState<string | null>(null)
-  const { socket, isConnected } = useSocket({ channelId })
+  const { socket, isConnected, sendMessage } = useSocketRoom({ channelId, isDM: false })
   
   // Update message when originalMessage changes
   useEffect(() => {

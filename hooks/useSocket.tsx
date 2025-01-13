@@ -15,11 +15,12 @@ interface ServerToClientEvents {
   channel_created: (channel: Channel) => void
   channel_delete: (channelId: string) => void
   channel_error: (error: { message: string }) => void
-  initial_statuses: (statuses: Array<{ userId: string, status: string, updatedAt: Date }>) => void
-  status_update: (status: { userId: string, status: string, updatedAt: Date }) => void
+  initial_statuses: (statuses: Array<{ userId: string, status: 'online' | 'offline', updatedAt: Date }>) => void
+  status_update: (status: { userId: string, status: 'online' | 'offline', updatedAt: Date }) => void
   reaction_added: (data: { messageId: string, reaction: any }) => void
   reaction_removed: (data: { messageId: string, reactionId: string }) => void
   dm_created: (chat: any) => void
+  user_disconnected: (userId: string) => void
 }
 
 interface ClientToServerEvents {
@@ -48,9 +49,10 @@ interface ClientToServerEvents {
   }) => void
   channel_create: (data: { name: string, description?: string }) => void
   channel_delete: (channelId: string) => void
-  status: (data: { userId: string, status: string, updatedAt: Date }) => void
+  status: (data: { userId: string, status: 'online' | 'offline', updatedAt: Date }) => void
   add_reaction: (data: { messageId: string, emoji: string, channelId: string }) => void
   user_signup: (data: any) => void
+  request_statuses: () => void
 }
 
 interface SocketContextType {
@@ -193,7 +195,7 @@ export function SocketProvider({ children, userId }: SocketProviderProps) {
         }
         
         setCurrentRoom(roomId)
-        console.log(Joined ${isDM ? 'DM' : 'channel'} room:, roomId)
+        console.log(`Joined ${isDM ? 'DM' : 'channel'} room:`, roomId)
       } catch (err) {
         console.error('Error joining room:', err)
         setError(err instanceof Error ? err : new Error(String(err)))
@@ -249,35 +251,33 @@ export function useSocketRoom({ channelId, isDM = false }: { channelId: string, 
       socket.off(isDM ? 'dm_message_received' : 'message_received', onMessage)
       socket.off('message_updated', onMessageUpdated)
     }
-  }, [socket, isConnected, channelId, isDM, joinRoom])
-
-  const sendMessage = (content: string, parentId?: string, attachment?: { url: string, type: string, name: string }) => {
-    if (!socket || !isConnected) return
-
-    if (isDM) {
-      socket.emit('new_dm_message', {
-        content,
-        dmId: channelId,
-        parentId,
-        attachment
-      })
-    } else {
-      socket.emit('new_message', {
-        content,
-        channelId,
-        parentId,
-        isDM,
-        attachment
-      })
-    }
-  }
+  }, [socket, isConnected, channelId, isDM, joinRoom, isJoining])
 
   return {
     socket,
     isConnected,
     currentRoom,
     messages,
-    sendMessage
+    sendMessage: (content: string, parentId?: string, attachment?: { url: string, type: string, name: string }) => {
+      if (!socket || !isConnected) return
+
+      if (isDM) {
+        socket.emit('new_dm_message', {
+          content,
+          dmId: channelId,
+          parentId,
+          attachment
+        })
+      } else {
+        socket.emit('new_message', {
+          content,
+          channelId,
+          parentId,
+          isDM,
+          attachment
+        })
+      }
+    }
   }
 }
 
@@ -288,7 +288,7 @@ export function useChannelOperations() {
     throw new Error('useChannelOperations must be used within a SocketProvider')
   }
 
-  const { socket, isConnected } = context
+  const { socket, isConnected, currentRoom } = context
   const router = useRouter()
   const pathname = usePathname()
   const segments = pathname.split('/')
@@ -297,26 +297,13 @@ export function useChannelOperations() {
   useEffect(() => {
     if (!socket) return
 
-    const onChannelDeleted = async (channelId: string) => {
+    const onChannelDeleted = (channelId: string) => {
       console.log('🔌 Channel deleted:', channelId)
       
-      // If we're in a channel route
-      if (segments[1] === 'channels' && currentChannelName) {
-        try {
-          // Check if the deleted channel is the current one
-          const response = await fetch(/api/channels/${currentChannelName})
-          const channel = await response.json()
-          
-          if (channel?.id === channelId) {
-            console.log('🔌 Current channel was deleted, redirecting to general')
-            router.push('/channels/general')
-          }
-        } catch (error) {
-          // If we can't fetch the channel info (likely because it was deleted)
-          // redirect to general to be safe
-          console.log('🔌 Error checking channel, redirecting to general:', error)
-          router.push('/channels/general')
-        }
+      // If we're in a channel route and it's the deleted channel, redirect to general
+      if (segments[1] === 'channels' && currentChannelName && channelId === currentRoom) {
+        console.log('🔌 Current channel was deleted, redirecting to general')
+        router.push('/channels/general')
       }
     }
 
@@ -325,7 +312,7 @@ export function useChannelOperations() {
     return () => {
       socket.off('channel_delete', onChannelDeleted)
     }
-  }, [socket, router, pathname, segments, currentChannelName])
+  }, [socket, router, segments, currentChannelName, currentRoom])
 
   const createChannel = (name: string, description?: string) => {
     if (!socket || !isConnected) {
@@ -347,21 +334,9 @@ export function useChannelOperations() {
     socket.emit('channel_delete', channelId)
 
     // If we're in the channel being deleted, redirect immediately
-    if (segments[1] === 'channels' && currentChannelName) {
-      // Fetch current channel ID to compare with the deleted channel ID
-      fetch(/api/channels/${currentChannelName})
-        .then(response => response.json())
-        .then(channel => {
-          if (channel?.id === channelId) {
-            console.log('🔌 Current channel was deleted, redirecting to general')
-            router.push('/channels/general')
-          }
-        })
-        .catch(() => {
-          // If we can't fetch the channel info, redirect to general to be safe
-          console.log('🔌 Error checking channel, redirecting to general')
-          router.push('/channels/general')
-        })
+    if (segments[1] === 'channels' && currentChannelName && channelId === currentRoom) {
+      console.log('🔌 Current channel was deleted, redirecting to general')
+      router.push('/channels/general')
     }
   }
 

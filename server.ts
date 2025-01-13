@@ -148,6 +148,16 @@ app.prepare().then(() => {
       })
     })
 
+    socket.on('request_statuses', () => {
+      // Send current statuses to the requesting client
+      const currentStatuses = Array.from(userStatuses.entries()).map(([userId, data]) => ({
+        userId,
+        status: data.status,
+        updatedAt: data.updatedAt
+      }))
+      socket.emit('initial_statuses', currentStatuses)
+    })
+
     socket.on('disconnect', () => {
       // Mark user as offline
       activeUsers.delete(userId)
@@ -357,7 +367,7 @@ app.prepare().then(() => {
         const newChannel = await prisma.channel.create({
           data: {
             name: data.name,
-            description: data.description || Channel for ${data.name}
+            description: data.description || `Channel for ${data.name}`
           }
         })
         
@@ -460,7 +470,7 @@ app.prepare().then(() => {
         await Promise.all(createDMs);
 
         console.log(
-          DMs created between new user ${data.userId} and existing users
+          `DMs created between new user ${data.userId} and existing users`
         );
 
         // Broadcast to all clients that a new user has signed up
@@ -586,6 +596,6 @@ app.prepare().then(() => {
 
   const port = process.env.PORT || 3000
   server.listen(port, () => {
-    console.log(> Ready on http://localhost:${port} - env ${process.env.NODE_ENV})
+    console.log(`> Ready on http://localhost:${port} - env ${process.env.NODE_ENV}`)
   })
 }) 

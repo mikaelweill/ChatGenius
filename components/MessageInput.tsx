@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { useSocket } from '@/hooks/useSocket'
+import { useSocketRoom } from '@/hooks/useSocket'
 import { FileDropZone } from './FileDropZone'
 import { uploadFile } from '@/lib/uploadUtils'
 import { eventBus } from '@/lib/eventBus'
@@ -23,7 +23,7 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
   const [uploadState, setUploadState] = useState<UploadState | null>(null)
   const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const { socket, isConnected } = useSocket({ channelId })
+  const { socket, isConnected, sendMessage } = useSocketRoom({ channelId })
 
   const handleFileSelect = async (file: File) => {
     try {
