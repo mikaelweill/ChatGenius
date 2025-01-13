@@ -29,6 +29,7 @@
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.469.0",
     "next": "^15.1.3",
+    "openai": "^4.78.1",
     "react": "^18",
     "react-dom": "^18",
     "react-idle-timer": "^5.7.2",
