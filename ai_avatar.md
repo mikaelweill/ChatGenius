@@ -1,41 +1,72 @@
 # AI Avatar Feature Implementation Plan
 
 ## Overview
-Implementation of AI-powered user avatars that can engage in conversations by mimicking user communication styles. The feature will be activated through the "/ai" command and will use a combination of ChatGPT, Pinecone, and Langchain for context-aware responses.
+Implementation of AI-powered user avatars that can engage in conversations by mimicking user communication styles. The feature will be activated through the "/ai" command (displayed as 🤖) and will use a combination of ChatGPT, Pinecone, and Langchain for context-aware responses.
 
 ## Implementation Progress
 
-### ✅ Command Parser Implementation
-- Created `lib/commandParser.ts`
-- Implemented command detection and parsing
-- Added UI formatting trigger on "/ai "
-- Separated UI feedback from command validation
+### ✅ Phase 1 Complete
+- Created `lib/commandParser.ts` with visual feedback
+- Enhanced MessageInput with real-time command styling
+- Set up OpenAI integration with GPT-4o mini
+- Created AI_SYSTEM user in database
+- Implemented basic message flow:
+  - User message appears immediately with 🤖
+  - AI response follows asynchronously
+  - Works in both channels and DMs
+- Removed API routes in favor of direct socket communication
+- Added proper error handling and state management
 
-### ✅ UI Integration
-- Enhanced MessageInput component
-- Added real-time command styling
-- Blue highlighting for "/ai"
-- Monospace font for commands
-- Visual feedback on valid commands
+### 🚧 Phase 2 (Current Focus)
+1. Message Grounding System
+   - Implement Pinecone for message vectorization
+   - Create relevance-based message retrieval
+   - Design context window management
+   - Set up background indexing of messages
 
-### ✅ API Setup
-- Created `/api/ai/route.ts` endpoint
-- Added OpenAI integration with gpt-4o-mini
-- Basic error handling
-- Authentication checks
-- Response formatting
+2. User-Specific AI Responses
+   - For DMs: Always mimic the other user
+   - For Channels: 
+     - Default: General AI assistant
+     - Optional: Select specific user to mimic
+   - Analyze and store user communication patterns
 
-### 🚧 In Progress
-- Server-side socket handling
-- Message broadcasting
-- Error recovery
-- Rate limiting
+### ⏳ Phase 3 (Planned)
+- Enhanced context management
+- User style preservation
+- Performance optimizations
+- Analytics and monitoring
 
-### ⏳ Pending
-- Pinecone integration
-- Context retrieval
-- Channel support
-- User selection UI
+## Technical Architecture Updates
+
+### Message Grounding Flow
+1. On "/ai" command:
+   - Vector search recent messages
+   - Filter by:
+     - DMs: Other user's messages only
+     - Channels: Selected user or all messages
+   - Sort by relevance and recency
+   - Construct context window
+
+2. Context Assembly:
+   ```typescript
+   interface MessageContext {
+     recentMessages: Message[]  // Most relevant messages
+     userStyle?: UserStyle     // If mimicking specific user
+     channelContext?: string   // Channel topic/purpose
+     messageType: 'dm' | 'channel'
+     selectedUser?: string     // For channel user selection
+   }
+   ```
+
+### User Style Analysis
+- Store message patterns per user
+- Analyze:
+  - Message length
+  - Vocabulary usage
+  - Emoji frequency
+  - Response patterns
+  - Common phrases
 
 ## Technical Architecture
 
@@ -174,7 +205,7 @@ User Input ("/ai" command)
    - Performance tracking 
 
 ## Recent Progress Update (Phase 1)
-- � Implemented command parser for "/ai" commands with immediate visual feedback
+- Implemented command parser for "/ai" commands with immediate visual feedback
 - ✅ Set up OpenAI integration with GPT-4o mini
 - ✅ Created AI_SYSTEM user in database
 - ✅ Implemented basic message flow:
