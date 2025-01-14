@@ -337,6 +337,22 @@ app.prepare().then(() => {
             if (data.targetUser) {
               // User-specific AI response
               const parsedCommand = parseAICommand(data.content);
+              console.log('AI User Command:', {
+                targetUser: data.targetUser,
+                prompt: parsedCommand.prompt,
+                command: parsedCommand.command
+              });
+              
+              // Verify the AI user exists
+              const aiUser = await prisma.user.findUnique({
+                where: { id: `ai_${data.targetUser}` }
+              });
+              
+              if (!aiUser) {
+                console.error('AI user not found:', data.targetUser);
+                return;
+              }
+
               aiContent = await getUserSpecificCompletion(
                 parsedCommand.prompt,
                 data.targetUser,

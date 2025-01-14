@@ -10,7 +10,17 @@ interface CommandResult {
  * Only checks for "/ai " to trigger UI changes
  */
 export function shouldShowAIFormatting(message: string): boolean {
-  return message.startsWith('/ai ') || message.match(/^\/ai_[a-zA-Z0-9]+\s/) !== null;
+  // Only show formatting when:
+  // 1. "/ai " (space after ai)
+  // 2. "/ai_username " (exact username match followed by space)
+  if (message.startsWith('/ai ')) return true;
+  
+  // Match underscore-separated names (e.g., /ai_sarah_chen)
+  const userMatch = message.match(/^\/ai_([a-zA-Z0-9_]+)/);
+  if (!userMatch) return false;
+  
+  const username = userMatch[1];
+  return message.charAt(message.indexOf(username) + username.length) === ' ';
 }
 
 /**
@@ -28,15 +38,15 @@ export function parseAICommand(message: string): CommandResult {
 
   const trimmedMessage = message.trim();
 
-  // Check for /ai_username format
-  const userMatch = trimmedMessage.match(/^\/ai_([a-zA-Z0-9]+)\s+(.+)$/);
+  // Match underscore-separated names
+  const userMatch = trimmedMessage.match(/^\/ai_([a-zA-Z0-9_]+)\s+(.+)$/);
   if (userMatch) {
     const [_, username, prompt] = userMatch;
     return {
       isCommand: true,
       command: 'ai_user',
       prompt: prompt.trim(),
-      targetUser: username
+      targetUser: username  // Keep underscores in the username
     };
   }
 

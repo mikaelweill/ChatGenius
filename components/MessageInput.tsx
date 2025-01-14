@@ -34,6 +34,7 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
   const { socket, isConnected, sendMessage } = useSocketRoom({ channelId })
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [users, setUsers] = useState<User[]>([])
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
 
   useEffect(() => {
     async function fetchUsers() {
@@ -95,6 +96,8 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
     setContent('');
     setUploadedFile(null);
     setShowAIFormatting(false);
+    setShowSuggestions(false);
+    setHighlightedIndex(0);
   };
 
   const handleFileButtonClick = () => {
@@ -120,16 +123,66 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
     const newContent = e.target.value
     setContent(newContent)
     
-    // Check for UI formatting
-    setShowAIFormatting(shouldShowAIFormatting(newContent))
-
-    // Show suggestions when typing "/ai"
-    if (newContent === '/ai') {
+    // Show suggestions when typing /ai or /ai_ followed by any characters
+    if (newContent.startsWith('/ai')) {
       setShowSuggestions(true)
     } else {
       setShowSuggestions(false)
     }
+
+    // Check for UI formatting
+    setShowAIFormatting(shouldShowAIFormatting(newContent))
   }
+
+  const getFilteredSuggestions = () => {
+    if (!content.startsWith('/ai')) return users;
+    
+    const searchTerm = content.toLowerCase();
+    return users.filter(user => {
+      const aiCommand = `/ai_${user.name.toLowerCase().replace(/\s+/g, '_')}`;
+      return aiCommand.startsWith(searchTerm);
+    });
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Handle Enter key for submission
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
+      return;
+    }
+
+    if (!showSuggestions) return;
+    
+    const suggestions = getFilteredSuggestions();
+    
+    switch (e.key) {
+      case 'Tab':
+        e.preventDefault();
+        if (suggestions.length > 0) {
+          const selectedUser = suggestions[highlightedIndex];
+          const completion = `/ai_${selectedUser.name.toLowerCase().replace(/\s+/g, '_')} `;
+          setContent(completion);
+          setHighlightedIndex(0);
+          setShowAIFormatting(shouldShowAIFormatting(completion));
+        }
+        break;
+        
+      case 'ArrowDown':
+        e.preventDefault();
+        setHighlightedIndex((prev) => 
+          prev < suggestions.length - 1 ? prev + 1 : prev
+        );
+        break;
+        
+      case 'ArrowUp':
+        e.preventDefault();
+        setHighlightedIndex((prev) => 
+          prev > 0 ? prev - 1 : prev
+        );
+        break;
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = eventBus.onFileDrop((file) => {
@@ -181,6 +234,7 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
               <textarea
                 value={content}
                 onChange={handleInputChange}
+                onKeyDown={handleKeyDown}
                 placeholder={uploadedFile ? "Add a message (optional)" : "Type a message..."}
                 className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
                   showAIFormatting ? 'font-mono' : ''
@@ -191,8 +245,21 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
               <div className={`absolute top-0 left-0 px-4 py-2 w-full pointer-events-none ${
                 showAIFormatting ? 'opacity-100' : 'opacity-0'
               }`}>
-                <span className="text-blue-500 font-mono">/ai</span>
-                <span className="font-mono">{content.slice(3)}</span>
+                {content.startsWith('/ai_') ? (
+                  <>
+                    <span className="text-blue-500 font-mono whitespace-pre">
+                      {content.match(/^\/ai_[a-zA-Z0-9_]+/)?.[0]}
+                    </span>
+                    <span className="font-mono whitespace-pre">
+                      {content.slice((content.match(/^\/ai_[a-zA-Z0-9_]+/)?.[0] || '').length)}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-blue-500 font-mono whitespace-pre">/ai</span>
+                    <span className="font-mono whitespace-pre">{content.slice(3)}</span>
+                  </>
+                )}
               </div>
             </div>
             <input
@@ -225,10 +292,17 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
         <div className="absolute bottom-full left-0 bg-white shadow-lg rounded-md p-2">
           <div className="text-sm text-gray-500 mb-2">Available commands:</div>
           <div className="space-y-1">
-            <div className="text-sm">/ai [prompt] - Get AI response</div>
-            {users.map(user => (
-              <div key={user.id} className="text-sm">
-                /ai_{user.name} [prompt] - Get AI response as {user.name}
+            {content.startsWith('/ai_') || (
+              <div className="text-sm">/ai [prompt] - Get AI response</div>
+            )}
+            {getFilteredSuggestions().map((user, index) => (
+              <div 
+                key={user.id} 
+                className={`text-sm cursor-pointer px-2 py-1 rounded ${
+                  index === highlightedIndex ? 'bg-indigo-100' : ''
+                }`}
+              >
+                /ai_{user.name.toLowerCase().replace(/\s+/g, '_')} [prompt] - Get AI response as {user.name}
               </div>
             ))}
           </div>
