@@ -70,7 +70,10 @@ export async function POST(req: Request) {
       // Get all existing users except the new user
       const existingUsers = await prisma.user.findMany({
         where: { 
-          id: { not: user.id } 
+          AND: [
+            { id: { not: user.id } },
+            { isAI: false }
+          ]
         },
         select: { id: true }
       })

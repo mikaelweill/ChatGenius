@@ -18,8 +18,13 @@ export default async function DMPage({
   }
 
   // Get other user
-  const otherUser = await prisma.user.findUnique({
-    where: { id: otherUserId }
+  const otherUser = await prisma.user.findFirst({
+    where: { 
+      AND: [
+        { id: otherUserId },
+        { isAI: false }
+      ]
+    }
   })
 
   if (!otherUser) {
@@ -31,7 +36,12 @@ export default async function DMPage({
     where: {
       AND: [
         { participants: { some: { id: user.id } } },
-        { participants: { some: { id: otherUserId } } }
+        { participants: { some: { 
+          AND: [
+            { id: otherUserId },
+            { isAI: false }
+          ]
+        }}}
       ]
     },
     include: {

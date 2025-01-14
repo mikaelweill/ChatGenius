@@ -16,6 +16,8 @@ model User {
   status        String    @default("offline")
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  isAI          Boolean   @default(false)
+  aiOwner       String?
   
   messages      Message[]
   channelMemberships ChannelMembership[]

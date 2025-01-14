@@ -517,9 +517,14 @@ app.prepare().then(() => {
       console.log("New user signup event received:", data);
 
       try {
-        // Fetch all existing users except the new user
+        // Fetch all existing users except the new user and AI users
         const existingUsers = await prisma.user.findMany({
-          where: { id: { not: data.userId } },
+          where: { 
+            AND: [
+              { id: { not: data.userId } },
+              { isAI: false }
+            ]
+          },
           select: { id: true },
         });
 

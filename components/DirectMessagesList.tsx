@@ -38,29 +38,31 @@ export function DirectMessagesList({
       </div>
       <div className="space-y-1">
         {directChats && directChats.length > 0 ? (
-          directChats.map((chat) => {
-            if (!chat.otherUser) {
-              console.warn('No other user found for chat:', chat)
-              return null
-            }
-            
-            // Use the same status logic as Username component
-            const userStatus = statuses[chat.otherUser.id]
-            const isOnline = userStatus?.status === 'online' && userStatus?.updatedAt != null
-            
-            return (
-              <Link
-                key={chat.id}
-                href={`/channels/dm/${chat.otherUser.id}`}
-                className="flex items-center px-2 py-1 text-sm text-gray-300 hover:bg-gray-700 rounded"
-              >
-                <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`} />
-                  <span>@{chat.otherUser.name || 'Anonymous'}</span>
-                </div>
-              </Link>
-            )
-          })
+          directChats
+            .filter(chat => !chat.otherUser?.isAI)
+            .map((chat) => {
+              if (!chat.otherUser) {
+                console.warn('No other user found for chat:', chat)
+                return null
+              }
+              
+              // Use the same status logic as Username component
+              const userStatus = statuses[chat.otherUser.id]
+              const isOnline = userStatus?.status === 'online' && userStatus?.updatedAt != null
+              
+              return (
+                <Link
+                  key={chat.id}
+                  href={`/channels/dm/${chat.otherUser.id}`}
+                  className="flex items-center px-2 py-1 text-sm text-gray-300 hover:bg-gray-700 rounded"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`} />
+                    <span>@{chat.otherUser.name || 'Anonymous'}</span>
+                  </div>
+                </Link>
+              )
+            })
         ) : (
           <p className="px-2 py-1 text-sm text-gray-500 italic">
             No direct messages yet

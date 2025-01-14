@@ -2,24 +2,29 @@ import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
-import { getAPIUser } from '@/lib/auth'
+import { getAPIUser, clearAuthCache } from '@/lib/auth'
 
 export async function POST(req: Request) {
+  let user: any;
+  let code: string | undefined;
+  let body: any;
+  
   try {
     console.log("📥 Signin request received")
-    const body = await req.json()
-    console.log("📋 Request body:", { email: body.email, hasCode: !!body.code })
-
-    const { email, code } = body
-    console.log("🔍 Processing signin for:", email)
+    clearAuthCache()
+    
+    body = await req.json()
+    const { email, code: receivedCode } = body
+    code = receivedCode
+    console.log("📋 Request body:", { email, hasCode: !!code })
 
     const supabase = createRouteHandlerClient({ cookies })
     
-    let user;
     if (code === 'VERIFIED') {
       console.log("✅ User already verified, getting session")
       const { user: authUser, error: authError } = await getAPIUser(() => cookies())
       if (authError || !authUser) {
+        console.error("❌ Auth error:", authError)
         throw authError || new Error('Failed to get user')
       }
       user = authUser
@@ -50,9 +55,15 @@ export async function POST(req: Request) {
       console.log("📤 OTP email sent successfully")
     }
 
+    if (!user) {
+      console.error("❌ No user object after auth flow")
+      throw new Error('No user object after auth flow')
+    }
+
     if (code === 'VERIFIED' || code) {
       if (user) {
         console.log("👥 Checking for existing Prisma user")
+        clearAuthCache()
         let dbUser = await prisma.user.findUnique({
           where: { id: user.id }
         })
@@ -71,17 +82,37 @@ export async function POST(req: Request) {
               email: user.email!,
               name: email.split('@')[0],
               status: 'online',
+              isAI: false,
               createdAt: new Date(),
               updatedAt: new Date()
             }
           })
           console.log("✅ Prisma user created:", dbUser.id)
 
+          // Create AI counterpart
+          console.log("🤖 Creating AI counterpart")
+          const aiUser = await prisma.user.create({
+            data: {
+              id: `ai_${user.id}`,
+              email: `ai_${user.email}`,
+              name: `AI_${dbUser.name}`,
+              status: 'online',
+              isAI: true,
+              aiOwner: user.id,
+              createdAt: new Date(),
+              updatedAt: new Date()
+            }
+          })
+          console.log("✅ AI counterpart created:", aiUser.id)
+
           // Get all existing users except the new user
           console.log("🤝 Setting up DM channels")
           const existingUsers = await prisma.user.findMany({
             where: { 
-              id: { not: user.id } 
+              AND: [
+                { id: { not: user.id } },
+                { isAI: false }
+              ]
             },
             select: { id: true }
           })
@@ -111,8 +142,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error("💥 Signin error:", error)
+    if (error instanceof Error) {
+      console.error("Error details:", {
+        message: error.message,
+        stack: error.stack,
+        cause: error.cause,
+        name: error.name,
+        isPrismaError: error.name === 'PrismaClientKnownRequestError'
+      })
+    }
+    
+    console.error("Current state:", {
+      hasUser: !!user,
+      hasCode: !!code,
+      email: body?.email
+    })
+
     return NextResponse.json(
-      { error: "Failed to process request" },
+      { error: error instanceof Error ? error.message : "Failed to process request" },
       { status: 500 }
     )
   }
