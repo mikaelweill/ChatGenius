@@ -3,11 +3,6 @@ import { type User } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 
 // Types
-interface CachedUser {
-  user: User | null
-  timestamp: number
-}
-
 interface AuthError {
   message: string
   status: number
@@ -24,36 +19,18 @@ const AUTH_ERRORS = {
   RATE_LIMIT: { message: 'Too many requests', status: 429, code: 'AUTH_RATE_LIMIT' }
 } as const
 
-// Server-side cache
-const AUTH_CACHE = new Map<string, CachedUser>()
-const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
-
 // Server-side utilities
 export async function getServerUser() {
   let cookieStore
   try {
     cookieStore = cookies()
   } catch (err: any) {
-    clearAuthCache() // Clear cache on cookie errors
     return { user: null, error: { ...AUTH_ERRORS.COOKIE_ERROR, details: err?.message } }
   }
 
   const supabase = createServerComponentClient({ 
     cookies: () => cookieStore 
   })
-  
-  const cacheKey = 'auth_user'
-  const cached = AUTH_CACHE.get(cacheKey)
-  
-  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-    // Even with cache, verify the session is still valid
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
-      clearAuthCache()
-      return { user: null, error: AUTH_ERRORS.INVALID_TOKEN }
-    }
-    return { user: cached.user, error: null }
-  }
   
   try {
     // Get both user and session
@@ -66,9 +43,6 @@ export async function getServerUser() {
     const { data: { session }, error: sessionError } = sessionResponse
     
     if (userError || sessionError) {
-      // Clear cache and handle specific Supabase error cases
-      clearAuthCache()
-      
       const error = userError || sessionError
       if (error?.message?.includes('token')) {
         return { user: null, error: AUTH_ERRORS.INVALID_TOKEN }
@@ -79,21 +53,13 @@ export async function getServerUser() {
       throw error || new Error('Unknown authentication error')
     }
     
-    // Only cache if we have both valid user and session
     if (user && session) {
-      AUTH_CACHE.set(cacheKey, {
-        user,
-        timestamp: Date.now()
-      })
       return { user, error: null }
     }
     
-    // Clear cache if no user or session found
-    clearAuthCache()
     return { user: null, error: AUTH_ERRORS.NO_USER }
     
   } catch (err: any) {
-    clearAuthCache() // Clear cache on unexpected errors
     return { 
       user: null, 
       error: { 
@@ -111,9 +77,6 @@ export async function getAPIUser(cookieStore: () => ReturnType<typeof cookies>) 
     const { data: { user }, error } = await supabase.auth.getUser()
     
     if (error) {
-      // Clear cache and handle specific API route error cases
-      clearAuthCache()
-      
       if (error.message?.includes('token')) {
         return { user: null, error: AUTH_ERRORS.INVALID_TOKEN }
       }
@@ -124,13 +87,11 @@ export async function getAPIUser(cookieStore: () => ReturnType<typeof cookies>) 
     }
     
     if (!user) {
-      clearAuthCache()
       return { user: null, error: AUTH_ERRORS.NO_USER }
     }
     
     return { user, error: null }
   } catch (err: any) {
-    clearAuthCache() // Clear cache on unexpected errors
     return { 
       user: null, 
       error: { 
@@ -139,9 +100,4 @@ export async function getAPIUser(cookieStore: () => ReturnType<typeof cookies>) 
       } 
     }
   }
-}
-
-// Helper to clear cache (useful for logout)
-export function clearAuthCache() {
-  AUTH_CACHE.clear()
 } 

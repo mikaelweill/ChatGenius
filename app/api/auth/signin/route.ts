@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
-import { getAPIUser, clearAuthCache } from '@/lib/auth'
+import { getAPIUser } from '@/lib/auth'
 
 export async function POST(req: Request) {
   let user: any;
@@ -11,7 +11,6 @@ export async function POST(req: Request) {
   
   try {
     console.log("📥 Signin request received")
-    clearAuthCache()
     
     body = await req.json()
     const { email, code: receivedCode } = body
@@ -63,7 +62,6 @@ export async function POST(req: Request) {
     if (code === 'VERIFIED' || code) {
       if (user) {
         console.log("👥 Checking for existing Prisma user")
-        clearAuthCache()
         let dbUser = await prisma.user.findUnique({
           where: { id: user.id }
         })

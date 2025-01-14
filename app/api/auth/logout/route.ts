@@ -1,7 +1,7 @@
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from "next/headers"
 import { prisma } from "@/lib/prisma"
-import { getAPIUser, clearAuthCache } from '@/lib/auth'
+import { getAPIUser } from '@/lib/auth'
 
 export async function POST() {
   try {
@@ -25,16 +25,11 @@ export async function POST() {
         console.error("❌ Failed to update status:", dbError)
         // Continue with signout even if status update fails
       }
-    } else {
-      console.log("⚠️ No user ID found in session")
     }
 
     // Sign out using Supabase
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
     await supabase.auth.signOut()
-
-    // Clear auth cache
-    clearAuthCache()
 
     console.log("👋 User signed out successfully")
 
@@ -43,7 +38,6 @@ export async function POST() {
     return new Response(null, {
       status: 200,
       headers: {
-        // Clear all Supabase session cookies
         'Set-Cookie': [
           `sb-access-token=deleted; path=/; expires=${cookieExpiryDate}; httponly`,
           `sb-refresh-token=deleted; path=/; expires=${cookieExpiryDate}; httponly`,
