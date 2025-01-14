@@ -32,27 +32,26 @@ const chat = new ChatOpenAI({
 async function generateQueries(originalQuery: string): Promise<string[]> {
   try {
     const response = await chat.invoke([
-      { role: "system", content: "You are a helpful assistant that generates multiple search queries based on a single input query. Generate 4 different but related queries that will help find relevant context." },
+      { role: "system", content: "Please come up with a few different way to phrase the following prompt. For context this is a question asked to a specific individula in a messaging app."},
       { role: "user", content: originalQuery },
-      { role: "user", content: "OUTPUT (4 queries):" }
+      { role: "user", content: "OUTPUT (3 queries):" }
     ]);
 
-    // Ensure response.content is a string and split into queries
+    // Get generated queries
     const content = typeof response.content === 'string' 
       ? response.content 
       : Array.isArray(response.content) 
         ? response.content.map(c => typeof c === 'string' ? c : '').join('\n')
         : '';
 
-    // Split response into individual queries
-    const queries = content
+    const generatedQueries = content
       .split('\n')
       .map((q: string) => q.trim())
       .filter((q: string) => q.length > 0)
-      .slice(0, 4); // Ensure we only get 4 queries
+      .slice(0, 3); // Reduced to 3 to make room for original
 
-    console.log('Generated queries:', queries);
-    return queries;
+    // Combine original query with generated ones
+    return [originalQuery, ...generatedQueries];
   } catch (error) {
     console.error('Error generating queries:', error);
     // If query generation fails, return just the original query
@@ -79,12 +78,27 @@ function reciprocalRankFusion(results: SearchResult[][], k: number = 60): Search
   });
 
   // Sort by score and return results
-  return Array.from(fusedScores.values())
+  const sortedResults = Array.from(fusedScores.values())
     .sort((a, b) => b.score - a.score)
     .map(item => ({
       ...item.result,
       score: item.score
     }));
+
+  // Log top 5 results with scores and metadata
+  console.log('Top 5 fused results:', 
+    sortedResults.slice(0, 5).map(result => ({
+      score: result.score,
+      content: result.pageContent,
+      metadata: {
+        author: result.metadata.author_name,
+        timestamp: result.metadata.timestamp,
+        channel: result.metadata.channel_name || result.metadata.direct_chat_id
+      }
+    }))
+  );
+
+  return sortedResults;
 }
 
 // Initialize vector store
@@ -134,9 +148,19 @@ export async function initializeVectorStore() {
 }
 
 // Enhanced test function with query generation and rank fusion
-export async function testSimilaritySearch(query: string, isDM: boolean = false) {
+export async function testSimilaritySearch(
+  query: string, 
+  isDM: boolean = false,
+  username?: string
+) {
   try {
-    console.log('Initializing vector store for query:', query);
+    console.log('Starting similarity search:', {
+      query,
+      isDM,
+      username,
+      timestamp: new Date().toISOString()
+    });
+    
     const store = await initializeVectorStore();
     
     console.log('Generating multiple queries...');
@@ -145,31 +169,42 @@ export async function testSimilaritySearch(query: string, isDM: boolean = false)
     console.log('Performing similarity searches...');
     const searchResults = await Promise.all(
       queries.map(async q => {
-        const results = await store.similaritySearch(q, 10);
-        // Log the first result's metadata to debug
+        const filter = username ? { author_name: username } : undefined;
+        console.log('Search with filter:', {
+          query: q,
+          filter,
+          isDM
+        });
+        
+        const results = await store.similaritySearch(q, 10, filter);
+        
+        // Log first result's metadata for debugging
         if (results.length > 0) {
-          console.log('Sample metadata:', results[0].metadata);
+          console.log('Sample result metadata:', {
+            query: q,
+            metadata: results[0].metadata,
+            content: results[0].pageContent
+          });
         }
-        return results.filter(result => {
+        
+        const filtered = results.filter(result => {
           const metadata = result.metadata;
           return isDM 
             ? metadata.direct_chat_id && metadata.direct_chat_id !== ""
             : metadata.channel_id && metadata.channel_id !== "";
         }).slice(0, 5);
+
+        console.log(`Found ${filtered.length} results after filtering for query: ${q}`);
+        return filtered;
       })
     );
     
-    console.log('Combining results with reciprocal rank fusion...');
-    const rankedResults = reciprocalRankFusion(searchResults);
+    const fusedResults = reciprocalRankFusion(searchResults);
+    console.log('Final fused results:', JSON.stringify(fusedResults, null, 2));
     
-    console.log('Final results:', JSON.stringify(rankedResults, null, 2));
-    return rankedResults;
+    return fusedResults;
   } catch (error) {
     console.error('Error in similarity search:', error);
-    if (error instanceof Error) {
-      console.error('Error details:', error.message);
-      console.error('Error stack:', error.stack);
-    }
     throw error;
   }
 }

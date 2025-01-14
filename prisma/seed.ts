@@ -5,21 +5,21 @@ const prisma = new PrismaClient()
 const users = [
   {
     id: 'user_sarah',
-    name: 'Sarah Chen',
+    name: 'sarah_chen',
     email: 'sarah@chatgenius.local',
     status: 'online',
     isAI: false
   },
   {
     id: 'user_james',
-    name: 'James Miller',
+    name: 'james_miller',
     email: 'james@chatgenius.local',
     status: 'online',
     isAI: false
   },
   {
     id: 'user_maya',
-    name: 'Maya Patel',
+    name: 'maya_patel',
     email: 'maya@chatgenius.local',
     status: 'online',
     isAI: false
@@ -175,7 +175,7 @@ async function seedUsers() {
       prisma.user.upsert({
         where: { id: `ai_${user.id}` },
         update: {
-          name: `AI_${user.name}`,
+          name: `AI ${user.name}`,
           email: `ai_${user.email}`,
           status: 'online',
           isAI: true,
@@ -183,7 +183,7 @@ async function seedUsers() {
         },
         create: {
           id: `ai_${user.id}`,
-          name: `AI_${user.name}`,
+          name: `AI ${user.name}`,
           email: `ai_${user.email}`,
           status: 'online',
           isAI: true,
@@ -216,7 +216,6 @@ async function createDMsBetweenUsers(users: User[]) {
 }
 
 async function seedMessages(channels: Channel[], users: User[]) {
-  // Seed intro messages
   const introChannel = channels.find(c => c.name === 'intros')
   const chatterChannel = channels.find(c => c.name === 'chatter')
   
@@ -230,8 +229,11 @@ async function seedMessages(channels: Channel[], users: User[]) {
       continue
     }
 
-    const userKey = user.name.split(' ')[0].toLowerCase() as keyof MessagesByUser
+    // Get first part of name before underscore instead of space
+    const userKey = user.name.split('_')[0].toLowerCase() as keyof MessagesByUser
     
+    console.log(`Seeding messages for user: ${user.name}, using key: ${userKey}`);  // Debug log
+
     // Type check for valid user key
     if (!channelMessages.intros[userKey]) {
       console.warn(`No intro messages found for user: ${userKey}`)

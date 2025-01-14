@@ -93,7 +93,7 @@ export async function POST(req: Request) {
             data: {
               id: `ai_${user.id}`,
               email: `ai_${user.email}`,
-              name: `AI_${dbUser.name}`,
+              name: `AI ${dbUser.name}`,
               status: 'online',
               isAI: true,
               aiOwner: user.id,

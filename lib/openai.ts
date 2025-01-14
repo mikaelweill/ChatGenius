@@ -70,18 +70,20 @@ export async function getUserSpecificCompletion(
   isDM: boolean = false
 ): Promise<string> {
   try {
-    // Get relevant context using RAG
-    const relevantResults = await testSimilaritySearch(prompt, isDM);
+    // Pass username to filter at the search level
+    const relevantResults = await testSimilaritySearch(prompt, isDM, username);
     
-    // Filter messages by the specific user
+    // No need to filter here anymore since results are pre-filtered
     const userMessages = relevantResults
-      .filter(result => result.metadata.author === username)
       .map(result => result.pageContent)
       .join('\n');
 
-    const systemPrompt = `You are now impersonating ${username}. Based on their previous messages, respond in their exact style:
+    // Convert username to display format (replace underscores with spaces)
+    const displayName = username.split('_').join(' ');
 
-Previous messages from ${username}:
+    const systemPrompt = `You are now impersonating ${displayName}. Based on their previous messages, respond in their exact style and try to answer the question correctly:
+
+Previous messages from ${displayName}:
 ${userMessages}
 
 Key instructions:
@@ -97,7 +99,7 @@ Key instructions:
 
 Respond to this prompt: "${prompt}"
 
-Remember: Your response should be indistinguishable from how ${username} would actually write it.`;
+Remember: Your response should be indistinguishable from how ${displayName} would actually write it.`;
 
     const completion = await openai.chat.completions.create({
       messages: [

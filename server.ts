@@ -347,7 +347,7 @@ app.prepare().then(() => {
               const originalUser = await prisma.user.findFirst({
                 where: {
                   name: {
-                    equals: data.targetUser.split('_').join(' '),
+                    equals: data.targetUser,
                     mode: 'insensitive'
                   }
                 },
@@ -363,7 +363,7 @@ app.prepare().then(() => {
               aiUserId = `ai_${originalUser.id}`;
               aiContent = await getUserSpecificCompletion(
                 parsedCommand.prompt,
-                data.targetUser.split('_').join(' '),  // Convert back to display name
+                data.targetUser,
                 data.isDM
               );
             } else {
