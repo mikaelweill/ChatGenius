@@ -10,10 +10,10 @@ const openai = new OpenAI({
 });
 
 // Create an enhanced prompt using RAG context
-async function createEnhancedPrompt(message: string): Promise<string> {
+async function createEnhancedPrompt(message: string, isDM: boolean = false): Promise<string> {
   try {
-    // Get relevant context using RAG
-    const relevantResults = await testSimilaritySearch(message);
+    // Get relevant context using RAG, passing isDM parameter
+    const relevantResults = await testSimilaritySearch(message, isDM);
     
     // Format context messages
     const contextText = relevantResults
@@ -28,6 +28,14 @@ ${contextText}
 
 CURRENT MESSAGE: "${message}"
 
+INSTRUCTIONS:
+1. Use the provided context to inform your response
+2. Maintain a natural, conversational tone
+3. If the context doesn't provide enough information, provide a reasonable response based on general knowledge
+4. Keep responses concise but informative
+5. Stay focused on the current topic
+${isDM ? "6. This is a direct message conversation, so keep the context personal and specific to this chat." : "6. This is a channel conversation, so consider the broader channel context."}
+
 Please provide a response that incorporates the context while maintaining a natural flow of conversation.`;
   } catch (error) {
     console.error('Error creating enhanced prompt:', error);
@@ -36,10 +44,10 @@ Please provide a response that incorporates the context while maintaining a natu
   }
 }
 
-export async function getChatCompletion(message: string): Promise<string> {
+export async function getChatCompletion(message: string, isDM: boolean = false): Promise<string> {
   try {
-    // Get enhanced prompt with context
-    const enhancedPrompt = await createEnhancedPrompt(message);
+    // Get enhanced prompt with context, passing isDM parameter
+    const enhancedPrompt = await createEnhancedPrompt(message, isDM);
     
     const completion = await openai.chat.completions.create({
       messages: [

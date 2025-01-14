@@ -19,17 +19,50 @@ Implementation of AI-powered user avatars that can engage in conversations by mi
 
 ### 🚧 Phase 2 (Current Focus)
 1. Message Grounding System
-   - Implement Pinecone for message vectorization
-   - Create relevance-based message retrieval
-   - Design context window management
-   - Set up background indexing of messages
+   - ✅ Implement Pinecone for message vectorization
+   - 🚧 Create relevance-based message retrieval
+     - ✅ Basic similarity search implementation
+     - ❌ Fix metadata filtering for DM/Channel separation
+     - ❌ Implement proper ranking system
+   - ❌ Design context window management
+   - ✅ Set up background indexing of messages
 
 2. User-Specific AI Responses
-   - For DMs: Always mimic the other user
-   - For Channels: 
+   - ❌ For DMs: Always mimic the other user
+   - ❌ For Channels: 
      - Default: General AI assistant
      - Optional: Select specific user to mimic
-   - Analyze and store user communication patterns
+   - ❌ Analyze and store user communication patterns
+
+### Immediate Next Steps
+1. 🔄 Fix metadata filtering in RAG system:
+   ```typescript
+   // Current metadata structure we need to handle:
+   {
+     channel_id: string | "",
+     direct_chat_id: string | null,
+     author_id: string,
+     author_name: string,
+     // ... other fields
+   }
+   ```
+
+2. 🔄 Enhance context retrieval:
+   - Implement proper filtering for DM vs channel messages
+   - Add relevance scoring based on:
+     - Message timestamp
+     - Conversation thread
+     - Author context
+
+3. ⏭️ Implement user style analysis:
+   - Message patterns
+   - Vocabulary usage
+   - Response characteristics
+
+4. ⏭️ Add context window management:
+   - Token counting
+   - Context prioritization
+   - Window size optimization
 
 ### ⏳ Phase 3 (Planned)
 - Enhanced context management

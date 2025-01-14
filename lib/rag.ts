@@ -139,7 +139,7 @@ export async function initializeVectorStore() {
 }
 
 // Enhanced test function with query generation and rank fusion
-export async function testSimilaritySearch(query: string) {
+export async function testSimilaritySearch(query: string, isDM: boolean = false) {
   try {
     console.log('Initializing vector store for query:', query);
     const store = await initializeVectorStore();
@@ -149,7 +149,19 @@ export async function testSimilaritySearch(query: string) {
     
     console.log('Performing similarity searches...');
     const searchResults = await Promise.all(
-      queries.map(q => store.similaritySearch(q, 5))
+      queries.map(async q => {
+        const results = await store.similaritySearch(q, 10);
+        // Log the first result's metadata to debug
+        if (results.length > 0) {
+          console.log('Sample metadata:', results[0].metadata);
+        }
+        return results.filter(result => {
+          const metadata = result.metadata;
+          return isDM 
+            ? metadata.direct_chat_id && metadata.direct_chat_id !== ""
+            : metadata.channel_id && metadata.channel_id !== "";
+        }).slice(0, 5);
+      })
     );
     
     console.log('Combining results with reciprocal rank fusion...');
