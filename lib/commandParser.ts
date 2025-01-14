@@ -2,6 +2,7 @@ interface CommandResult {
   isCommand: boolean;
   command: string;
   prompt: string;
+  targetUser?: string;
 }
 
 /**
@@ -9,7 +10,7 @@ interface CommandResult {
  * Only checks for "/ai " to trigger UI changes
  */
 export function shouldShowAIFormatting(message: string): boolean {
-  return message.startsWith('/ai ');
+  return message.startsWith('/ai ') || message.match(/^\/ai_[a-zA-Z0-9]+/) !== null;
 }
 
 /**
@@ -21,28 +22,33 @@ export function parseAICommand(message: string): CommandResult {
   const defaultResult: CommandResult = {
     isCommand: false,
     command: '',
-    prompt: ''
+    prompt: '',
+    targetUser: undefined
   };
 
-  // Trim the message
   const trimmedMessage = message.trim();
 
-  // Check if message starts with /ai followed by a space
-  if (!trimmedMessage.startsWith('/ai ')) {
-    return defaultResult;
+  // Check for /ai_username format
+  const userMatch = trimmedMessage.match(/^\/ai_([a-zA-Z0-9]+)\s+(.+)$/);
+  if (userMatch) {
+    const [_, username, prompt] = userMatch;
+    return {
+      isCommand: true,
+      command: 'ai_user',
+      prompt: prompt.trim(),
+      targetUser: username
+    };
   }
 
-  // Extract the prompt (everything after /ai)
-  const prompt = trimmedMessage.slice(4).trim();
-  
-  // If there's no prompt text, return false
-  if (!prompt) {
-    return defaultResult;
+  // Check for regular /ai command
+  if (trimmedMessage.startsWith('/ai ')) {
+    return {
+      isCommand: true,
+      command: 'ai',
+      prompt: trimmedMessage.slice(4).trim(),
+      targetUser: undefined
+    };
   }
 
-  return {
-    isCommand: true,
-    command: 'ai',
-    prompt
-  };
+  return defaultResult;
 } 

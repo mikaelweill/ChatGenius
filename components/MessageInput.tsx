@@ -19,6 +19,12 @@ interface UploadedFile {
   fileType: string;
 }
 
+interface User {
+  id: string;
+  name: string;
+  isAI: boolean;
+}
+
 export function MessageInput({ channelId, isDM = false }: { channelId: string, isDM?: boolean }) {
   const [content, setContent] = useState('')
   const [showAIFormatting, setShowAIFormatting] = useState(false)
@@ -26,6 +32,19 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
   const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { socket, isConnected, sendMessage } = useSocketRoom({ channelId })
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [users, setUsers] = useState<User[]>([])
+
+  useEffect(() => {
+    async function fetchUsers() {
+      const response = await fetch('/api/users')
+      const data = await response.json()
+      if (Array.isArray(data)) {
+        setUsers(data.filter(user => !user.isAI))
+      }
+    }
+    fetchUsers()
+  }, [])
 
   const handleFileSelect = async (file: File) => {
     try {
@@ -95,12 +114,19 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
     }
   }
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newContent = e.target.value
     setContent(newContent)
     
     // Check for UI formatting
     setShowAIFormatting(shouldShowAIFormatting(newContent))
+
+    // Show suggestions when typing "/ai"
+    if (newContent === '/ai') {
+      setShowSuggestions(true)
+    } else {
+      setShowSuggestions(false)
+    }
   }
 
   useEffect(() => {
@@ -150,8 +176,7 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
         <form onSubmit={handleSubmit} className="p-4 border-t bg-white">
           <div className="flex gap-2">
             <div className="relative flex-1">
-              <input
-                type="text"
+              <textarea
                 value={content}
                 onChange={handleInputChange}
                 placeholder={uploadedFile ? "Add a message (optional)" : "Type a message..."}
@@ -159,6 +184,7 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
                   showAIFormatting ? 'font-mono' : ''
                 }`}
                 disabled={!isConnected || uploadState?.status === 'uploading'}
+                rows={1}
               />
               <div className={`absolute top-0 left-0 px-4 py-2 w-full pointer-events-none ${
                 showAIFormatting ? 'opacity-100' : 'opacity-0'
@@ -191,6 +217,21 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
           </div>
         </form>
       </FileDropZone>
+
+      {/* Suggestions dropdown */}
+      {showSuggestions && (
+        <div className="absolute bottom-full left-0 bg-white shadow-lg rounded-md p-2">
+          <div className="text-sm text-gray-500 mb-2">Available commands:</div>
+          <div className="space-y-1">
+            <div className="text-sm">/ai [prompt] - Get AI response</div>
+            {users.map(user => (
+              <div key={user.id} className="text-sm">
+                /ai_{user.name} [prompt] - Get AI response as {user.name}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 } 

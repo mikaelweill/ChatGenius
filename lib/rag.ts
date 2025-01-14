@@ -94,35 +94,30 @@ export async function initializeVectorStore() {
   // Check environment variables
   const pineconeApiKey = process.env.PINECONE_API_KEY;
   const pineconeIndex = process.env.PINECONE_INDEX;
-  const pineconeNamespace = process.env.PINECONE_NAMESPACE;
 
-  if (!pineconeApiKey || !pineconeIndex || !pineconeNamespace) {
+  if (!pineconeApiKey || !pineconeIndex) {
     console.error('Missing environment variables:', {
       hasPineconeApiKey: !!pineconeApiKey,
-      hasPineconeIndex: !!pineconeIndex,
-      hasPineconeNamespace: !!pineconeNamespace
+      hasPineconeIndex: !!pineconeIndex
     });
     throw new Error('Missing required Pinecone environment variables');
   }
   
   try {
     console.log('Initializing Pinecone client...');
-    // Initialize the client with API key
     const pc = new Pinecone({
       apiKey: pineconeApiKey
     });
     
     console.log('Getting index:', pineconeIndex);
-    // Initialize the index - now pineconeIndex is definitely string
     const index = pc.Index(pineconeIndex);
 
-    console.log('Creating vector store with namespace:', pineconeNamespace);
-    // Create the vector store - now pineconeNamespace is definitely string
+    console.log('Creating vector store...');
+    // Remove namespace from PineconeStore initialization
     vectorStore = await PineconeStore.fromExistingIndex(
       embeddings,
       {
-        pineconeIndex: index,
-        namespace: pineconeNamespace
+        pineconeIndex: index
       }
     );
     
@@ -176,5 +171,27 @@ export async function testSimilaritySearch(query: string, isDM: boolean = false)
       console.error('Error stack:', error.stack);
     }
     throw error;
+  }
+}
+
+// Update search function to use metadata filtering instead of namespace
+export async function similaritySearch(
+  query: string,
+  k: number = 4,
+  filter?: { [key: string]: any }
+): Promise<SearchResult[]> {
+  const store = await initializeVectorStore();
+  
+  try {
+    // Use metadata filter instead of namespace
+    const results = await store.similaritySearch(query, k, filter);
+    return results.map(doc => ({
+      pageContent: doc.pageContent,
+      metadata: doc.metadata,
+      score: doc.metadata.score
+    }));
+  } catch (error) {
+    console.error('Error in similarity search:', error);
+    return [];
   }
 } 
