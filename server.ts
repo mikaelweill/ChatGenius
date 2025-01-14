@@ -342,23 +342,30 @@ app.prepare().then(() => {
                 prompt: parsedCommand.prompt,
                 command: parsedCommand.command
               });
-              
-              // Verify the AI user exists
-              const aiUser = await prisma.user.findUnique({
-                where: { id: `ai_${data.targetUser}` }
+
+              // Find the original user
+              const originalUser = await prisma.user.findFirst({
+                where: {
+                  name: {
+                    equals: data.targetUser.split('_').join(' '),
+                    mode: 'insensitive'
+                  }
+                },
+                select: { id: true }
               });
-              
-              if (!aiUser) {
-                console.error('AI user not found:', data.targetUser);
+
+              if (!originalUser) {
+                console.error('Original user not found:', data.targetUser);
                 return;
               }
 
+              // Just construct the AI ID directly
+              aiUserId = `ai_${originalUser.id}`;
               aiContent = await getUserSpecificCompletion(
                 parsedCommand.prompt,
-                data.targetUser,
+                data.targetUser.split('_').join(' '),  // Convert back to display name
                 data.isDM
               );
-              aiUserId = `ai_${data.targetUser}`;
             } else {
               // Regular AI response
               aiContent = await getChatCompletion(data.content.slice(4), data.isDM);
