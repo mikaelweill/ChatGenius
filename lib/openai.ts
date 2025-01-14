@@ -62,4 +62,56 @@ export async function getChatCompletion(message: string, isDM: boolean = false):
     console.error('Error in chat completion:', error);
     throw error;
   }
+}
+
+export async function getUserSpecificCompletion(
+  prompt: string,
+  username: string,
+  isDM: boolean = false
+): Promise<string> {
+  try {
+    // Get relevant context using RAG
+    const relevantResults = await testSimilaritySearch(prompt, isDM);
+    
+    // Filter messages by the specific user
+    const userMessages = relevantResults
+      .filter(result => result.metadata.author === username)
+      .map(result => result.pageContent)
+      .join('\n');
+
+    const systemPrompt = `You are now impersonating ${username}. Based on their previous messages, respond in their exact style:
+
+Previous messages from ${username}:
+${userMessages}
+
+Key instructions:
+1. Match their exact writing style, including:
+   - Emoji usage patterns
+   - Capitalization habits
+   - Technical vocabulary level
+   - Slang and expressions
+2. Maintain their personality traits
+3. Reference their known interests
+4. Keep consistent with their expertise areas
+5. Use similar sentence structures
+
+Respond to this prompt: "${prompt}"
+
+Remember: Your response should be indistinguishable from how ${username} would actually write it.`;
+
+    const completion = await openai.chat.completions.create({
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: prompt }
+      ],
+      model: "gpt-4",
+      temperature: 0.9,  // Higher temperature for more personality
+      max_tokens: 500
+    });
+
+    return completion.choices[0]?.message?.content || "I couldn't generate a response.";
+  } catch (error) {
+    console.error('Error in user-specific chat completion:', error);
+    throw error;
+  }
 } 

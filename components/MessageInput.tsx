@@ -73,13 +73,15 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
     e.preventDefault();
     if ((!content.trim() && !uploadedFile) || !isConnected || !socket) return;
 
-    const messageContent = content.startsWith('/ai') ? content.replace('/ai', '🤖') : content;
-
+    // Parse the AI command
+    const parsedCommand = parseAICommand(content);
+    
     const messageData = {
-      content: messageContent,
+      content: content,
       channelId,
       isDM,
-      isAICommand: content.startsWith('/ai'),
+      isAICommand: parsedCommand.isCommand,
+      targetUser: parsedCommand.targetUser,
       ...(uploadedFile && {
         attachment: {
           url: uploadedFile.fileKey,
@@ -135,7 +137,7 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
     });
 
     return () => unsubscribe();
-  }, []);  // Empty deps since handleFileSelect is stable
+  }, []);  // This is fine as is since handleFileSelect is stable
 
   return (
     <div className="relative">

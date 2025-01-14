@@ -10,7 +10,7 @@ interface CommandResult {
  * Only checks for "/ai " to trigger UI changes
  */
 export function shouldShowAIFormatting(message: string): boolean {
-  return message.startsWith('/ai ') || message.match(/^\/ai_[a-zA-Z0-9]+/) !== null;
+  return message.startsWith('/ai ') || message.match(/^\/ai_[a-zA-Z0-9]+\s/) !== null;
 }
 
 /**

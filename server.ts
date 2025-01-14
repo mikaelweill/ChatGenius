@@ -3,7 +3,8 @@ import { parse } from 'url'
 import next from 'next'
 import { Server } from 'socket.io'
 import { prisma } from './lib/prisma'
-import { getChatCompletion } from './lib/openai'
+import { getChatCompletion, getUserSpecificCompletion } from './lib/openai'
+import { parseAICommand } from './lib/commandParser'
 
 const dev = process.env.NODE_ENV !== 'production'
 const app = next({ dev })
@@ -330,12 +331,28 @@ app.prepare().then(() => {
         // Then handle AI command if present
         if (data.isAICommand) {
           try {
-            const aiContent = await getChatCompletion(data.content.slice(4))
+            let aiContent;
+            let aiUserId;
+
+            if (data.targetUser) {
+              // User-specific AI response
+              const parsedCommand = parseAICommand(data.content);
+              aiContent = await getUserSpecificCompletion(
+                parsedCommand.prompt,
+                data.targetUser,
+                data.isDM
+              );
+              aiUserId = `ai_${data.targetUser}`;
+            } else {
+              // Regular AI response
+              aiContent = await getChatCompletion(data.content.slice(4), data.isDM);
+              aiUserId = 'AI_SYSTEM';
+            }
             
             const aiMessage = await prisma.message.create({
               data: {
                 content: aiContent,
-                authorId: 'AI_SYSTEM',
+                authorId: aiUserId,
                 ...(data.isDM ? { directChatId: data.channelId } : { channelId: data.channelId })
               },
               include: {
@@ -348,10 +365,10 @@ app.prepare().then(() => {
                   }
                 }
               }
-            })
-              io.to(data.channelId).emit('message_received', aiMessage)
+            });
+            io.to(data.channelId).emit('message_received', aiMessage);
           } catch (error) {
-            console.error('Error processing AI command:', error)
+            console.error('Error processing AI command:', error);
           }
         }
 
