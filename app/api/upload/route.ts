@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
-import { getPresignedUploadUrl, validateFile, allowedFileTypes, MAX_FILE_SIZE } from '@/lib/s3';
+import { getPresignedUploadUrl, validateFile } from '@/lib/s3';
 import { cookies } from 'next/headers';
 import { getAPIUser } from '@/lib/auth';
 
+// Define constants but don't export them
 const ALLOWED_TYPES = [
   'image/jpeg',
   'image/png',
   'image/gif',
-  // Add these lines for audio support
   'audio/webm',
   'audio/wav',
   'audio/mp3',
@@ -16,8 +16,8 @@ const ALLOWED_TYPES = [
   'video/mp4'
 ];
 
-// Increase max file size for videos (e.g., 100MB)
-export const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+// Keep this as a constant, not exported
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
 
 export async function POST(request: Request) {
     try {
@@ -28,9 +28,9 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        // Get file info from request
         const { fileName, contentType, fileSize } = await request.json();
         
+        // Use the constants in the validation
         if (!fileName || !contentType || !fileSize) {
             return NextResponse.json(
                 { error: 'Missing required fields: fileName, contentType, or fileSize' }, 
@@ -38,7 +38,6 @@ export async function POST(request: Request) {
             );
         }
 
-        // Check file type
         if (!ALLOWED_TYPES.includes(contentType)) {
             return NextResponse.json(
                 { error: `File type ${contentType} not supported. Allowed types: ${ALLOWED_TYPES.join(', ')}` },
@@ -46,7 +45,6 @@ export async function POST(request: Request) {
             );
         }
 
-        // Check file size
         if (fileSize > MAX_FILE_SIZE) {
             return NextResponse.json(
                 { error: `File size ${fileSize} exceeds maximum allowed size of ${MAX_FILE_SIZE} bytes` },

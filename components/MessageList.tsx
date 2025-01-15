@@ -282,7 +282,7 @@ export function MessageList({ initialMessages, channelId, currentUserId, isDM = 
                   ) : attachment.type.startsWith('video/') ? (
                     // Video attachments
                     <VideoPlayer 
-                      src={attachmentUrls[attachment.id] || ''} 
+                      src={attachmentUrls[attachment.id] || null} 
                       fileName={attachment.name}
                     />
                   ) : attachment.type.startsWith('audio/') ? (

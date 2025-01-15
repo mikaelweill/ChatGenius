@@ -81,7 +81,9 @@ export function VideoRecorder({ onRecordingComplete, disabled = false }: VideoRe
         const videoBlob = new Blob(chunksRef.current, { 
           type: 'video/webm;codecs=vp8,opus' 
         })
-        console.log('Video blob type:', videoBlob.type);
+        console.log('Video blob type:', videoBlob.type)
+        
+        // Just call onRecordingComplete with the blob
         onRecordingComplete(videoBlob)
         
         // Clean up
@@ -110,25 +112,6 @@ export function VideoRecorder({ onRecordingComplete, disabled = false }: VideoRe
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop()
       setIsRecording(false)
-    }
-  }
-
-  const handleVideoComplete = async (videoBlob: Blob) => {
-    try {
-      // Create a new blob without codec info in the type
-      const file = new File(
-        [videoBlob], 
-        'video-message.webm', 
-        { type: 'video/webm' }  // Use simpler MIME type
-      )
-      await handleFileSelect(file)
-    } catch (error) {
-      console.error('Error handling video recording:', error)
-      setUploadState({
-        progress: 0,
-        status: 'error',
-        error: 'Failed to upload video recording'
-      })
     }
   }
 
