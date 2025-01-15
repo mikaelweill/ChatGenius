@@ -11,8 +11,13 @@ const ALLOWED_TYPES = [
   'audio/webm',
   'audio/wav',
   'audio/mp3',
-  'audio/mpeg'
+  'audio/mpeg',
+  'video/webm',
+  'video/mp4'
 ];
+
+// Increase max file size for videos (e.g., 100MB)
+export const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
 
 export async function POST(request: Request) {
     try {
@@ -28,7 +33,23 @@ export async function POST(request: Request) {
         
         if (!fileName || !contentType || !fileSize) {
             return NextResponse.json(
-                { error: 'fileName, contentType, and fileSize are required' }, 
+                { error: 'Missing required fields: fileName, contentType, or fileSize' }, 
+                { status: 400 }
+            );
+        }
+
+        // Check file type
+        if (!ALLOWED_TYPES.includes(contentType)) {
+            return NextResponse.json(
+                { error: `File type ${contentType} not supported. Allowed types: ${ALLOWED_TYPES.join(', ')}` },
+                { status: 400 }
+            );
+        }
+
+        // Check file size
+        if (fileSize > MAX_FILE_SIZE) {
+            return NextResponse.json(
+                { error: `File size ${fileSize} exceeds maximum allowed size of ${MAX_FILE_SIZE} bytes` },
                 { status: 400 }
             );
         }
@@ -56,7 +77,7 @@ export async function POST(request: Request) {
     } catch (error) {
         console.error('Upload error:', error);
         return NextResponse.json(
-            { error: 'Failed to generate upload URL' }, 
+            { error: error instanceof Error ? error.message : 'Failed to generate upload URL' },
             { status: 500 }
         );
     }

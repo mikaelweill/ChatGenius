@@ -20,18 +20,32 @@ const ALLOWED_TYPES = [
   'audio/webm',
   'audio/wav',
   'audio/mp3',
-  'audio/mpeg'
+  'audio/mpeg',
+  'video/webm',
+  'video/mp4'
 ];
 
 export async function uploadFile(
   file: File,
   onProgress?: (progress: UploadProgress) => void
 ): Promise<UploadResult> {
+  // Set initial upload state immediately
+  onProgress?.({
+    progress: 0,
+    status: 'uploading'
+  });
+
   if (!ALLOWED_TYPES.includes(file.type)) {
-    throw new Error('File type not supported');
+    throw new Error(`File type ${file.type} not supported. Allowed types: ${ALLOWED_TYPES.join(', ')}`);
   }
+
   try {
     // 1. Get presigned URL from our API
+    onProgress?.({
+      progress: 10,  // Show some progress while getting presigned URL
+      status: 'uploading'
+    });
+
     const response = await fetch('/api/upload', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -43,8 +57,8 @@ export async function uploadFile(
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error);
+      const errorData = await response.json().catch(() => ({ error: 'Upload failed' }));
+      throw new Error(errorData.error || 'Upload failed');
     }
 
     const { uploadUrl, fileKey } = await response.json();
@@ -54,7 +68,8 @@ export async function uploadFile(
     
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable && onProgress) {
-        const progress = (event.loaded / event.total) * 100;
+        // Scale progress from 20-90% during actual upload
+        const progress = 20 + (event.loaded / event.total) * 70;
         onProgress({
           progress,
           status: 'uploading'
@@ -95,6 +110,7 @@ export async function uploadFile(
       xhr.send(file);
     });
   } catch (error) {
+    console.error('Upload error details:', error);
     onProgress?.({
       progress: 0,
       status: 'error',

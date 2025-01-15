@@ -51,21 +51,30 @@ export const allowedFileTypes = new Set([
   'text/plain',
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'audio/mpeg',  // MP3 files
-  'audio/webm'   // Add this for voice messages
+  'audio/mpeg',
+  'audio/webm',
+  'video/webm',
+  'video/mp4',
+  'video/webm;codecs=vp8,opus'
 ]);
 
-// Max file size (25MB)
-export const MAX_FILE_SIZE = 25 * 1024 * 1024;
+// Increase max file size for videos
+export const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
 
 // Validate file
 export function validateFile(file: File): { isValid: boolean; error?: string } {
-  if (!allowedFileTypes.has(file.type)) {
-    return { isValid: false, error: 'File type not supported' };
+  // Strip codec info for type checking
+  const baseType = file.type.split(';')[0];
+  
+  if (!allowedFileTypes.has(baseType)) {
+    return { 
+      isValid: false, 
+      error: `File type ${file.type} not supported. Allowed types: ${Array.from(allowedFileTypes).join(', ')}` 
+    };
   }
   
   if (file.size > MAX_FILE_SIZE) {
-    return { isValid: false, error: 'File size exceeds 25MB limit' };
+    return { isValid: false, error: 'File size exceeds 100MB limit' };
   }
   
   return { isValid: true };

@@ -6,8 +6,10 @@ import { FileDropZone } from './FileDropZone'
 import { uploadFile } from '@/lib/uploadUtils'
 import { eventBus } from '@/lib/eventBus'
 import { parseAICommand, shouldShowAIFormatting } from '@/lib/commandParser'
-import { Mic, Camera, Paperclip } from 'lucide-react'
+import { Mic, Video, Paperclip } from 'lucide-react'
 import { VoiceRecorder } from './VoiceRecorder'
+import { VideoRecorder } from './VideoRecorder'
+import { UploadProgress } from './UploadProgress'
 
 interface UploadState {
   progress: number;
@@ -69,8 +71,13 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
         status: 'error',
         error: 'Failed to upload file'
       });
+
+      // Clear error after 3 seconds
+      setTimeout(() => {
+        setUploadState(null);
+      }, 3000);
     }
-  }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -196,50 +203,76 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
 
   const handleRecordingComplete = async (audioBlob: Blob) => {
     try {
-      // Create a File from the Blob
       const file = new File([audioBlob], 'voice-message.webm', {
         type: 'audio/webm'
       })
-      
-      // Use the existing file upload logic
       await handleFileSelect(file)
     } catch (error) {
       console.error('Error handling voice recording:', error)
+      setUploadState({
+        progress: 0,
+        status: 'error',
+        error: 'Failed to upload voice recording'
+      });
+      setTimeout(() => {
+        setUploadState(null);
+      }, 3000);
     }
   }
 
-  const handleCameraClick = () => {
-    // TODO: Implement camera/video
-    console.log('Camera clicked')
+  const handleVideoComplete = async (videoBlob: Blob) => {
+    try {
+      const file = new File([videoBlob], 'video-message.webm', {
+        type: 'video/webm'
+      })
+      await handleFileSelect(file)
+    } catch (error) {
+      console.error('Error handling video recording:', error)
+      setUploadState({
+        progress: 0,
+        status: 'error',
+        error: 'Failed to upload video recording'
+      });
+      setTimeout(() => {
+        setUploadState(null);
+      }, 3000);
+    }
   }
 
   return (
     <div className="relative">
       <div className="absolute bottom-full w-full pb-2">
-        {uploadState && uploadState.status === 'uploading' && (
-          <div className="bg-white p-2 rounded-t-lg shadow-sm border border-b-0">
-            <div className="text-sm text-gray-600">
-              Uploading... {Math.round(uploadState.progress)}%
-            </div>
-          </div>
+        {/* Show progress during upload */}
+        {uploadState?.status === 'uploading' && (
+          <UploadProgress 
+            progress={uploadState.progress}
+            status={uploadState.status}
+            fileName={uploadedFile?.fileName || 'File'}
+            error={uploadState.error}
+          />
         )}
+
+        {/* Show error state */}
         {uploadState?.status === 'error' && (
-          <div className="bg-white p-2 rounded-t-lg shadow-sm border border-b-0">
-            <div className="text-sm text-red-600">
-              {uploadState.error}
-            </div>
-          </div>
+          <UploadProgress 
+            progress={0}
+            status="error"
+            fileName={uploadedFile?.fileName || 'File'}
+            error={uploadState.error}
+          />
         )}
-        {uploadedFile && (
-          <div className="bg-white p-2 rounded-t-lg shadow-sm border border-b-0">
-            <div className="flex items-center gap-2">
+
+        {/* Show ready to send state */}
+        {uploadedFile && !uploadState && (
+          <div className="bg-white p-3 rounded-lg shadow-sm border">
+            <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">
                 Ready to send: {uploadedFile.fileName}
               </span>
               <button
                 type="button"
                 onClick={clearUploadedFile}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-400 hover:text-gray-600 ml-2"
               >
                 ✕
               </button>
@@ -289,14 +322,10 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
               disabled={uploadState?.status === 'uploading'}
             />
 
-            <button
-              type="button"
-              onClick={handleCameraClick}
-              className="p-2 text-gray-600 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
+            <VideoRecorder 
+              onRecordingComplete={handleVideoComplete}
               disabled={uploadState?.status === 'uploading'}
-            >
-              <Camera className="w-5 h-5" />
-            </button>
+            />
 
             <input
               type="file"
