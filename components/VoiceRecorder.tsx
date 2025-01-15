@@ -81,28 +81,39 @@ export function VoiceRecorder({ onRecordingComplete, disabled = false }: VoiceRe
   }
 
   return (
-    <div className="relative inline-block">
+    <div className="relative">
+      {(isRecording || isPreparing) && (
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 whitespace-nowrap">
+          <span className={`text-sm font-medium ${isPreparing ? 'text-yellow-500' : 'text-red-500'}`}>
+            {isPreparing ? 'Preparing...' : `Recording ${formatTime(recordingTime)}`}
+          </span>
+        </div>
+      )}
+
       <button
         type="button"
         onClick={isRecording ? stopRecording : startRecording}
         disabled={disabled || isPreparing}
         className={`p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors ${
           isRecording 
-            ? 'text-red-500 hover:bg-red-50' 
+            ? 'bg-red-50 text-red-500 hover:bg-red-100'
             : isPreparing
               ? 'text-yellow-500 hover:bg-yellow-50'
               : 'text-gray-600 hover:bg-gray-100'
         }`}
+        title={isRecording ? "Click to save recording" : "Click to start recording"}
       >
         <Mic className={`w-5 h-5 ${isRecording ? 'animate-pulse' : ''}`} />
       </button>
-      
-      {(isRecording || isPreparing) && (
-        <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 whitespace-nowrap">
-          <span className={`text-sm font-medium ${isPreparing ? 'text-yellow-500' : 'text-red-500'}`}>
-            {isPreparing ? 'Preparing...' : `Recording ${formatTime(recordingTime)}`}
-          </span>
-        </div>
+
+      {isRecording && (
+        <button
+          onClick={stopRecording}
+          className="absolute -top-1 -right-1 bg-green-500 text-white rounded-full p-1 w-5 h-5 flex items-center justify-center text-xs hover:bg-green-600"
+          title="Save recording"
+        >
+          ✓
+        </button>
       )}
     </div>
   )
