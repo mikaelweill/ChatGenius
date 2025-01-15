@@ -278,8 +278,8 @@ export function MessageList({ initialMessages, channelId, currentUserId, isDM = 
                         </div>
                       )}
                     </div>
-                  ) : attachment.type === 'audio/mpeg' ? (
-                    // Audio attachments
+                  ) : (attachment.type.startsWith('audio/')) ? (
+                    // Audio attachments (both MP3 and WebM)
                     <div className="rounded-lg border border-gray-200 p-3">
                       <div className="flex items-center gap-2 mb-2">
                         <div className="text-2xl">🎵</div>
@@ -293,7 +293,7 @@ export function MessageList({ initialMessages, channelId, currentUserId, isDM = 
                           className="w-full" 
                           preload="metadata"
                         >
-                          <source src={attachmentUrls[attachment.id]} type="audio/mpeg" />
+                          <source src={attachmentUrls[attachment.id]} type={attachment.type} />
                           Your browser does not support the audio element.
                         </audio>
                       ) : (
