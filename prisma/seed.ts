@@ -1,4 +1,5 @@
 import { PrismaClient, Channel, User } from '@prisma/client'
+import { vectorizeMessage } from '../lib/vectorize';
 
 const prisma = new PrismaClient()
 
@@ -229,40 +230,41 @@ async function seedMessages(channels: Channel[], users: User[]) {
       continue
     }
 
-    // Get first part of name before underscore instead of space
     const userKey = user.name.split('_')[0].toLowerCase() as keyof MessagesByUser
     
-    console.log(`Seeding messages for user: ${user.name}, using key: ${userKey}`);  // Debug log
-
-    // Type check for valid user key
-    if (!channelMessages.intros[userKey]) {
-      console.warn(`No intro messages found for user: ${userKey}`)
-      continue
-    }
-
     // Create intro messages
     for (const message of channelMessages.intros[userKey]) {
-      await prisma.message.create({
+      const savedMessage = await prisma.message.create({
         data: {
           content: message,
           authorId: user.id,
           channelId: introChannel.id
         }
-      })
+      });
+      
+      // Vectorize intro message
+      await vectorizeMessage(savedMessage.id).catch(error => {
+        console.error('Failed to vectorize intro message:', error);
+      });
     }
 
     // Create chatter messages
     for (const message of channelMessages.chatter[userKey]) {
-      await prisma.message.create({
+      const savedMessage = await prisma.message.create({
         data: {
           content: message,
           authorId: user.id,
           channelId: chatterChannel.id
         }
-      })
+      });
+      
+      // Vectorize chatter message
+      await vectorizeMessage(savedMessage.id).catch(error => {
+        console.error('Failed to vectorize chatter message:', error);
+      });
     }
   }
-  console.log('✓ Messages seeded in both channels')
+  console.log('✓ Messages seeded and vectorized in both channels')
 }
 
 async function createChannelMemberships(channels: Channel[], users: User[]) {

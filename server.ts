@@ -7,6 +7,7 @@ import { getChatCompletion, getUserSpecificCompletion } from './lib/openai'
 import { parseAICommand } from './lib/commandParser'
 import { generateSpeech } from './lib/tts'
 import { createAIAudioMessage } from './lib/aiAudioMessage'
+import { vectorizeMessage, deleteMessageVector } from './lib/vectorize'
 
 const dev = process.env.NODE_ENV !== 'production'
 const app = next({ dev })
@@ -423,6 +424,11 @@ app.prepare().then(() => {
               io.to(data.channelId).emit('message_received', aiMessage);
             }
 
+            // Add vectorization
+            await vectorizeMessage(aiMessage.id).catch(error => {
+              console.error('Failed to vectorize AI message:', error);
+            });
+
           } catch (error) {
             console.error('Error processing AI command:', error);
           }
@@ -489,6 +495,12 @@ app.prepare().then(() => {
           isDM: data.isDM,
           timestamp: new Date().toISOString()
         })
+
+        // Add vectorization
+        await vectorizeMessage(savedMessage.id).catch(error => {
+          console.error('Failed to vectorize message:', error);
+          // Don't throw - we still want to send the message even if vectorization fails
+        });
       } catch (error) {
         console.error('Error processing message:', error)
       }
@@ -544,6 +556,15 @@ app.prepare().then(() => {
         if (channel.name === 'general') {
           throw new Error('Cannot delete the general channel')
         }
+
+        // Before deleting messages, get their IDs
+        const messages = await prisma.message.findMany({
+          where: { channelId },
+          select: { id: true }
+        });
+
+        // Delete messages and their vectors
+        await Promise.all(messages.map(msg => deleteMessageVector(msg.id)));
 
         await prisma.$transaction([
           prisma.reaction.deleteMany({
@@ -630,12 +651,6 @@ app.prepare().then(() => {
     
 
     socket.on('new_dm_message', async (data) => {
-      // console.log('DM message received:', {
-      //   data,
-      //   socketId: socket.id,
-      //   userId: socket.data.userId
-      // })
-      
       try {
         const savedMessage = await prisma.message.create({
           data: {
@@ -654,6 +669,11 @@ app.prepare().then(() => {
           },
         })
 
+        // Add vectorization for DM messages
+        await vectorizeMessage(savedMessage.id).catch(error => {
+          console.error('Failed to vectorize DM:', error);
+        });
+
         const chat = await prisma.directChat.findUnique({
           where: { id: data.chatId },
           include: { participants: true }
@@ -662,7 +682,6 @@ app.prepare().then(() => {
         chat?.participants.forEach(participant => {
           io.to(participant.id).emit('dm_message_received', savedMessage)
         })
-        // console.log('Emitted DM message:', savedMessage)
       } catch (error) {
         console.error('Error processing DM message:', error)
       }
