@@ -1,7 +1,26 @@
 import { PrismaClient, Channel, User } from '@prisma/client'
 import { vectorizeMessage } from '../lib/vectorize';
+import { Pinecone } from "@pinecone-database/pinecone";
 
 const prisma = new PrismaClient()
+
+// Initialize Pinecone client
+const pinecone = new Pinecone({
+  apiKey: process.env.PINECONE_API_KEY!,
+});
+
+// Function to clear Pinecone index
+async function clearPineconeIndex() {
+  try {
+    console.log('🗑️ Clearing Pinecone index...');
+    const index = pinecone.index(process.env.PINECONE_INDEX!);
+    await index.deleteAll();
+    console.log('✅ Pinecone index cleared');
+  } catch (error) {
+    console.error('❌ Error clearing Pinecone index:', error);
+    throw error;
+  }
+}
 
 const users = [
   {
@@ -286,6 +305,9 @@ async function createChannelMemberships(channels: Channel[], users: User[]) {
 async function main() {
   console.log('🌱 Starting database seed...')
   
+  // Clear Pinecone first
+  await clearPineconeIndex();
+
   const channels = await seedChannels()
   const seededUsers = await seedUsers()
   await createDMsBetweenUsers(seededUsers)
