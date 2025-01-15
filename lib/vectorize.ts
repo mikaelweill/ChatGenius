@@ -51,10 +51,14 @@ async function getMessageWithContext(messageId: string) {
 
 // Use it when vectorizing
 export async function vectorizeMessage(messageId: string) {
+  console.log('📝 Starting vectorization for message:', messageId);
   try {
+    console.log('📝 Starting vectorization for message:', messageId);
     const messageContext = await getMessageWithContext(messageId);
+    
     if (!messageContext) {
-      throw new Error('Message not found');
+      console.error('❌ Message not found for vectorization:', messageId);
+      return;
     }
 
     // Format message like in Python script
@@ -68,10 +72,15 @@ export async function vectorizeMessage(messageId: string) {
       ${messageContext.reply_count ? `Thread Reply Count: ${messageContext.reply_count}` : ''}
     `.trim();
 
+    // Construct prefixed ID based on message type
+    const vectorId = messageContext.channelId 
+      ? `ch_${messageContext.channelId}_${messageId}`
+      : `dm_${messageContext.directChatId}_${messageId}`;
+
     const document = new Document({
       pageContent: text,
       metadata: {
-        message_id: messageContext.id,
+        message_id: messageId,
         author_id: messageContext.authorId,
         author_name: messageContext.author_name || '',
         channel_id: messageContext.channelId || '',
@@ -85,21 +94,65 @@ export async function vectorizeMessage(messageId: string) {
 
     // Get vector store and add document
     const index = pinecone.index(process.env.PINECONE_INDEX!);
+    console.log('🔍 Using Pinecone index:', process.env.PINECONE_INDEX);
+    
     const vectorStore = await PineconeStore.fromExistingIndex(
       embeddings,
       { pineconeIndex: index }
     );
-    await vectorStore.addDocuments([document]);
-
-    console.log('✅ Message vectorized successfully:', messageId);
+    
+    await vectorStore.addDocuments([document], { ids: [vectorId] });
+    console.log('✅ Successfully vectorized message:', messageId);
   } catch (error) {
     console.error('❌ Error vectorizing message:', error);
-    // Don't throw - we don't want to break message creation if vectorization fails
   }
 }
 
-// Delete a message vector
-export async function deleteMessageVector(messageId: string) {
-  const index = pinecone.index(process.env.PINECONE_INDEX!);
-  await index.deleteOne(messageId);
+// Delete all vectors for a channel
+export async function deleteChannelVectors(channelId: string) {
+  try {
+    console.log('🗑️ Starting vector deletion for channel:', channelId);
+    
+    const index = pinecone.index(process.env.PINECONE_INDEX!);
+    
+    // Get first page of vectors
+    const pageOneList = await index.listPaginated({ 
+      prefix: `ch_${channelId}_` 
+    });
+    
+    // Safely handle potentially undefined vectors
+    const vectors = pageOneList.vectors || [];
+    if (vectors.length > 0) {
+      const vectorIds = vectors.map(vector => vector.id);
+      await index.deleteMany(vectorIds);
+      console.log(`✅ Deleted ${vectorIds.length} vectors from first page`);
+    }
+
+    // Get and delete subsequent pages if they exist
+    let nextToken = pageOneList.pagination?.next;
+    while (nextToken) {
+      const nextPage = await index.listPaginated({ 
+        prefix: `ch_${channelId}_`,
+        paginationToken: nextToken
+      });
+      
+      const pageVectors = nextPage.vectors || [];
+      if (pageVectors.length > 0) {
+        const vectorIds = pageVectors.map(vector => vector.id);
+        await index.deleteMany(vectorIds);
+        console.log(`✅ Deleted ${vectorIds.length} more vectors`);
+      }
+      
+      nextToken = nextPage.pagination?.next;
+    }
+
+    console.log(`✅ Finished deleting all vectors for channel:`, channelId);
+  } catch (error) {
+    console.error('❌ Error deleting channel vectors:', error);
+    console.error('Error details:', {
+      channelId,
+      error: error instanceof Error ? error.message : error
+    });
+    throw error;
+  }
 }

@@ -7,7 +7,7 @@ import { getChatCompletion, getUserSpecificCompletion } from './lib/openai'
 import { parseAICommand } from './lib/commandParser'
 import { generateSpeech } from './lib/tts'
 import { createAIAudioMessage } from './lib/aiAudioMessage'
-import { vectorizeMessage, deleteMessageVector } from './lib/vectorize'
+import { vectorizeMessage, deleteChannelVectors } from './lib/vectorize'
 
 const dev = process.env.NODE_ENV !== 'production'
 const app = next({ dev })
@@ -543,7 +543,7 @@ app.prepare().then(() => {
           channelId,
           userId: socket.data.userId,
           timestamp: new Date().toISOString()
-        })
+        });
 
         const channel = await prisma.channel.findUnique({
           where: { id: channelId }
@@ -557,40 +557,37 @@ app.prepare().then(() => {
           throw new Error('Cannot delete the general channel')
         }
 
-        // Before deleting messages, get their IDs
-        const messages = await prisma.message.findMany({
-          where: { channelId },
-          select: { id: true }
+        await prisma.$transaction(async (tx) => {
+          console.log('🗑️ Starting batch deletion for channel:', channelId);
+
+          // Delete all vectors for channel at once
+          try {
+            await Promise.all([
+              // Delete all vectors for channel in one go
+              deleteChannelVectors(channelId),
+              
+              // Delete DB records
+              tx.reaction.deleteMany({
+                where: { message: { channelId } }
+              }),
+              tx.attachment.deleteMany({
+                where: { message: { channelId } }
+              }),
+              tx.channelMembership.deleteMany({
+                where: { channelId }
+              }),
+              tx.message.deleteMany({
+                where: { channelId }
+              }),
+              tx.channel.delete({
+                where: { id: channelId }
+              })
+            ]);
+          } catch (error) {
+            console.error('❌ Failed to delete channel:', error);
+            throw error;
+          }
         });
-
-        // Delete messages and their vectors
-        await Promise.all(messages.map(msg => deleteMessageVector(msg.id)));
-
-        await prisma.$transaction([
-          prisma.reaction.deleteMany({
-            where: {
-              message: {
-                channelId
-              }
-            }
-          }),
-          prisma.attachment.deleteMany({
-            where: {
-              message: {
-                channelId
-              }
-            }
-          }),
-          prisma.channelMembership.deleteMany({
-            where: { channelId }
-          }),
-          prisma.message.deleteMany({
-            where: { channelId }
-          }),
-          prisma.channel.delete({
-            where: { id: channelId }
-          })
-        ])
 
         io.emit('channel_delete', channelId)
 
