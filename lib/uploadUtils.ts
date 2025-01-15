@@ -11,10 +11,25 @@ interface UploadResult {
   fileType: string;
 }
 
+// Add audio MIME types to allowed types
+const ALLOWED_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  // Add these lines for audio support
+  'audio/webm',
+  'audio/wav',
+  'audio/mp3',
+  'audio/mpeg'
+];
+
 export async function uploadFile(
   file: File,
   onProgress?: (progress: UploadProgress) => void
 ): Promise<UploadResult> {
+  if (!ALLOWED_TYPES.includes(file.type)) {
+    throw new Error('File type not supported');
+  }
   try {
     // 1. Get presigned URL from our API
     const response = await fetch('/api/upload', {

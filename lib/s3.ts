@@ -51,7 +51,8 @@ export const allowedFileTypes = new Set([
   'text/plain',
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'audio/mpeg'  // MP3 files
+  'audio/mpeg',  // MP3 files
+  'audio/webm'   // Add this for voice messages
 ]);
 
 // Max file size (25MB)
@@ -76,3 +77,6 @@ export function formatFileSize(bytes: number): string {
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 } 
+
+console.log('S3 module loaded at:', new Date().toISOString()) 
+console.log(123) 

@@ -6,6 +6,8 @@ import { FileDropZone } from './FileDropZone'
 import { uploadFile } from '@/lib/uploadUtils'
 import { eventBus } from '@/lib/eventBus'
 import { parseAICommand, shouldShowAIFormatting } from '@/lib/commandParser'
+import { Mic, Camera, Paperclip } from 'lucide-react'
+import { VoiceRecorder } from './VoiceRecorder'
 
 interface UploadState {
   progress: number;
@@ -192,6 +194,25 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
     return () => unsubscribe();
   }, []);  // This is fine as is since handleFileSelect is stable
 
+  const handleRecordingComplete = async (audioBlob: Blob) => {
+    try {
+      // Create a File from the Blob
+      const file = new File([audioBlob], 'voice-message.webm', {
+        type: 'audio/webm'
+      })
+      
+      // Use the existing file upload logic
+      await handleFileSelect(file)
+    } catch (error) {
+      console.error('Error handling voice recording:', error)
+    }
+  }
+
+  const handleCameraClick = () => {
+    // TODO: Implement camera/video
+    console.log('Camera clicked')
+  }
+
   return (
     <div className="relative">
       <div className="absolute bottom-full w-full pb-2">
@@ -229,7 +250,7 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
 
       <FileDropZone onFileDrop={(file) => eventBus.emitFileDrop(file)}>
         <form onSubmit={handleSubmit} className="p-4 border-t bg-white">
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
             <div className="relative flex-1">
               <textarea
                 value={content}
@@ -262,6 +283,21 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
                 )}
               </div>
             </div>
+
+            <VoiceRecorder 
+              onRecordingComplete={handleRecordingComplete}
+              disabled={uploadState?.status === 'uploading'}
+            />
+
+            <button
+              type="button"
+              onClick={handleCameraClick}
+              className="p-2 text-gray-600 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
+              disabled={uploadState?.status === 'uploading'}
+            >
+              <Camera className="w-5 h-5" />
+            </button>
+
             <input
               type="file"
               ref={fileInputRef}
@@ -271,10 +307,10 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
             <button
               type="button"
               onClick={handleFileButtonClick}
-              className="px-3 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
+              className="p-2 text-gray-600 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
               disabled={uploadState?.status === 'uploading' || uploadedFile !== null}
             >
-              📎
+              <Paperclip className="w-5 h-5" />
             </button>
             <button
               type="submit"

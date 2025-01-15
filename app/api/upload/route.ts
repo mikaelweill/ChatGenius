@@ -3,6 +3,17 @@ import { getPresignedUploadUrl, validateFile, allowedFileTypes, MAX_FILE_SIZE } 
 import { cookies } from 'next/headers';
 import { getAPIUser } from '@/lib/auth';
 
+const ALLOWED_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  // Add these lines for audio support
+  'audio/webm',
+  'audio/wav',
+  'audio/mp3',
+  'audio/mpeg'
+];
+
 export async function POST(request: Request) {
     try {
         const cookieStore = cookies()
@@ -38,7 +49,7 @@ export async function POST(request: Request) {
             uploadUrl, 
             fileKey,
             maxSize: MAX_FILE_SIZE,
-            allowedTypes: Array.from(allowedFileTypes),
+            allowedTypes: Array.from(ALLOWED_TYPES),
             expiresIn: 3600 // URL expiration in seconds
         });
 
@@ -55,6 +66,6 @@ export async function POST(request: Request) {
 export async function GET() {
     return NextResponse.json({
         maxSize: MAX_FILE_SIZE,
-        allowedTypes: Array.from(allowedFileTypes)
+        allowedTypes: Array.from(ALLOWED_TYPES)
     });
 } 

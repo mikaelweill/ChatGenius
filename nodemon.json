@@ -1,6 +1,11 @@
 {
-  "watch": ["server.ts", "app/api/**/*.ts"],
-  "exec": "ts-node --project tsconfig.server.json server.ts",
-  "ext": "ts",
-  "ignore": ["*.test.ts", "node_modules"]
+  "watch": [
+    "server.ts",
+    "lib/**/*.ts",
+    "app/**/*.ts",
+    "app/**/*.tsx",
+    "components/**/*.tsx"
+  ],
+  "ext": "ts,tsx,json",
+  "exec": "ts-node --project tsconfig.server.json server.ts"
 } 
