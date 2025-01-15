@@ -1,9 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { formatRelativeTime } from '@/lib/timeUtils'
 import { getFileUrl } from '@/lib/uploadUtils'
-import { AudioMessage } from './AudioMessage'
 
 interface MessageProps {
   message: {
@@ -32,25 +30,16 @@ export function Message({ message }: MessageProps) {
 
   return (
     <div className="py-2">
-      {/* ... author and content ... */}
-      
       {message.attachment && (
-        message.attachment.type.startsWith('audio/') ? (
-          <AudioMessage 
-            fileKey={message.attachment.url} 
-            fileName={message.attachment.name}
-          />
-        ) : (
-          <div className="mt-2">
-            <a 
-              href="#" 
-              onClick={(e) => handleFileClick(e, message.attachment)}
-              className="text-blue-500 hover:underline"
-            >
-              📎 {message.attachment.name}
-            </a>
-          </div>
-        )
+        <div className="mt-2">
+          <a 
+            href="#" 
+            onClick={(e) => handleFileClick(e, message.attachment)}
+            className="text-blue-500 hover:underline"
+          >
+            {message.attachment.type.startsWith('audio/') ? '🎵' : '📎'} {message.attachment.name}
+          </a>
+        </div>
       )}
     </div>
   )

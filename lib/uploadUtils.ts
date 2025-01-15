@@ -102,4 +102,10 @@ export async function uploadFile(
     });
     throw error;
   }
+}
+
+export async function getFileUrl(fileKey: string): Promise<string> {
+  const response = await fetch(`/api/presigned-url?fileKey=${encodeURIComponent(fileKey)}`)
+  const { url } = await response.json()
+  return url
 } 
