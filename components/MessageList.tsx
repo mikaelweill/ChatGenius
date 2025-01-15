@@ -9,6 +9,7 @@ import { Smile, MessageSquare, Download } from 'lucide-react'
 import { MessageWithAuthorAndReactions } from '@/types/message'
 import { FileDropZone } from './FileDropZone'
 import { eventBus } from '@/lib/eventBus'
+import { VideoPlayer } from './VideoPlayer'
 
 interface MessageListProps {
   initialMessages: MessageWithAuthorAndReactions[]
@@ -278,7 +279,13 @@ export function MessageList({ initialMessages, channelId, currentUserId, isDM = 
                         </div>
                       )}
                     </div>
-                  ) : (attachment.type.startsWith('audio/')) ? (
+                  ) : attachment.type.startsWith('video/') ? (
+                    // Video attachments
+                    <VideoPlayer 
+                      src={attachmentUrls[attachment.id] || ''} 
+                      fileName={attachment.name}
+                    />
+                  ) : attachment.type.startsWith('audio/') ? (
                     // Audio attachments (both MP3 and WebM)
                     <div className="rounded-lg border border-gray-200 p-3">
                       <div className="flex items-center gap-2 mb-2">
