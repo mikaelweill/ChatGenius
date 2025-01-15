@@ -13,7 +13,8 @@ const ALLOWED_TYPES = [
   'audio/mp3',
   'audio/mpeg',
   'video/webm',
-  'video/mp4'
+  'video/mp4',
+  'application/pdf'
 ];
 
 // Keep this as a constant, not exported

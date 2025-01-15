@@ -7,7 +7,7 @@ import { getChatCompletion, getUserSpecificCompletion } from './lib/openai'
 import { parseAICommand } from './lib/commandParser'
 import { generateSpeech } from './lib/tts'
 import { createAIAudioMessage } from './lib/aiAudioMessage'
-import { vectorizeMessage, deleteChannelVectors } from './lib/vectorize'
+import { vectorizeMessage, deleteChannelVectors, vectorizePDF } from './lib/vectorize'
 
 const dev = process.env.NODE_ENV !== 'production'
 const app = next({ dev })
@@ -501,6 +501,17 @@ app.prepare().then(() => {
           console.error('Failed to vectorize message:', error);
           // Don't throw - we still want to send the message even if vectorization fails
         });
+
+        // Add PDF vectorization if there's a PDF attachment
+        if (savedMessage.attachments?.some(att => att.type === 'application/pdf')) {
+          for (const attachment of savedMessage.attachments) {
+            if (attachment.type === 'application/pdf') {
+              await vectorizePDF(attachment.id).catch(error => {
+                console.error('Failed to vectorize PDF:', error);
+              });
+            }
+          }
+        }
       } catch (error) {
         console.error('Error processing message:', error)
       }

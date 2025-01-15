@@ -19,8 +19,8 @@ interface UploadState {
 
 interface UploadedFile {
   fileKey: string;
-  fileName: string;
-  fileType: string;
+  name: string;
+  type: string;
 }
 
 interface User {
@@ -60,8 +60,8 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
       // Store the uploaded file info instead of sending immediately
       setUploadedFile({
         fileKey: result.fileKey,
-        fileName: result.fileName,
-        fileType: result.fileType
+        name: result.fileName,
+        type: result.fileType
       });
       setUploadState(null);
     } catch (error) {
@@ -95,11 +95,12 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
       ...(uploadedFile && {
         attachment: {
           url: uploadedFile.fileKey,
-          type: uploadedFile.fileType,
-          name: uploadedFile.fileName
+          type: uploadedFile.type,
+          name: uploadedFile.name
         }
       })
     };
+    console.log('Sending message data:', messageData);
 
     socket.emit('new_message', messageData);
     setContent('');
@@ -247,7 +248,7 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
           <UploadProgress 
             progress={uploadState.progress}
             status={uploadState.status}
-            fileName={uploadedFile?.fileName || 'File'}
+            fileName={uploadedFile?.name || 'File'}
             error={uploadState.error}
           />
         )}
@@ -257,7 +258,7 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
           <UploadProgress 
             progress={0}
             status="error"
-            fileName={uploadedFile?.fileName || 'File'}
+            fileName={uploadedFile?.name || 'File'}
             error={uploadState.error}
           />
         )}
@@ -267,7 +268,7 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
           <div className="bg-white p-3 rounded-lg shadow-sm border">
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">
-                Ready to send: {uploadedFile.fileName}
+                Ready to send: {uploadedFile.name}
               </span>
               <button
                 type="button"

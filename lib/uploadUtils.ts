@@ -22,7 +22,8 @@ const ALLOWED_TYPES = [
   'audio/mp3',
   'audio/mpeg',
   'video/webm',
-  'video/mp4'
+  'video/mp4',
+  'application/pdf'
 ];
 
 export async function uploadFile(
@@ -71,7 +72,13 @@ export async function uploadFile(
 
     const data = await response.json();
     console.log('✅ Upload: Successfully uploaded file:', data.fileKey);
-    return data;
+    console.log('✅ Upload result:', data);
+    return {
+      fileKey: data.fileKey,
+      url: data.fileKey,
+      fileName: file.name,
+      fileType: file.type
+    };
   } catch (error) {
     console.error('💥 Upload: Error uploading file:', error);
     throw error;

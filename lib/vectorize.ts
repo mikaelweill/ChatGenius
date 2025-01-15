@@ -4,7 +4,7 @@ import { PineconeStore } from "@langchain/pinecone";
 import { Document } from "langchain/document";
 import { prisma } from "./prisma";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
-import { generateSummary } from "./utils";
+// import { generateSummary } from "./utils";
 import { getPresignedViewUrl } from "./s3";
 
 const embeddings = new OpenAIEmbeddings({
@@ -163,7 +163,6 @@ export async function deleteChannelVectors(channelId: string) {
 
 export async function vectorizePDF(attachmentId: string) {
   try {
-    // 1. Get attachment metadata from database
     const attachment = await prisma.attachment.findUnique({
       where: { id: attachmentId },
       include: {
@@ -171,7 +170,8 @@ export async function vectorizePDF(attachmentId: string) {
           include: {
             author: {
               select: { name: true }
-            }
+            },
+            channel: true,
           }
         }
       }
@@ -182,9 +182,9 @@ export async function vectorizePDF(attachmentId: string) {
       throw new Error('Attachment is not a PDF');
     }
 
-    // 2. Get PDF content from S3
-    const fileKey = attachment.url.split('/uploads/')[1];
-    if (!fileKey) throw new Error('Invalid attachment URL format');
+    // The url IS the fileKey - no need to split
+    const fileKey = attachment.url;
+    console.log('📄 PDF file key:', fileKey);
 
     const presignedUrl = await getPresignedViewUrl(fileKey);
     const response = await fetch(presignedUrl);
@@ -197,28 +197,35 @@ export async function vectorizePDF(attachmentId: string) {
       separators: ["\n\n", "\n", " ", ""],
     });
 
-    // 4. Create chunks with metadata
+    // 4. Create chunks with metadata as a Record<string, any>
     const chunks = await textSplitter.createDocuments(
       [content],
-      {
-        pdf_id: attachment.id,
-        title: attachment.name,
-        source: 'pdf_content',
-        author: attachment.message.author.name,
-        uploadedBy: attachment.message.authorId,
-        messageId: attachment.messageId,
-        uploadedAt: attachment.message.createdAt
-      }
+      [{  // Wrap metadata in an array with a single object
+        metadata: {
+          pdf_id: attachment.id,
+          title: attachment.name,
+          source: 'pdf_content',
+          author: attachment.message.author.name,
+          uploadedBy: attachment.message.authorId,
+          messageId: attachment.messageId,
+          uploadedAt: attachment.message.createdAt
+        }
+      }]
     );
 
-    // 5. Store in Pinecone
+    // 5. Create vector IDs with full context
+    const vectorIds = chunks.map((_, i) => 
+      attachment.message.channelId 
+        ? `ch_${attachment.message.channelId}_msg_${attachment.messageId}_pdf_${attachment.id}_chunk_${i}`
+        : `dm_${attachment.message.directChatId}_msg_${attachment.messageId}_pdf_${attachment.id}_chunk_${i}`
+    );
+
     const index = pinecone.index(process.env.PINECONE_INDEX!);
     const vectorStore = await PineconeStore.fromExistingIndex(
       embeddings,
       { pineconeIndex: index }
     );
 
-    const vectorIds = chunks.map((_, i) => `pdf_${attachment.id}_chunk_${i}`);
     await vectorStore.addDocuments(chunks, { ids: vectorIds });
 
     console.log(`✅ Vectorized PDF ${attachment.name} into ${chunks.length} chunks`);
