@@ -5,6 +5,8 @@ import { Server } from 'socket.io'
 import { prisma } from './lib/prisma'
 import { getChatCompletion, getUserSpecificCompletion } from './lib/openai'
 import { parseAICommand } from './lib/commandParser'
+import { generateSpeech } from './lib/tts'
+import { createAIAudioMessage } from './lib/aiAudioMessage'
 
 const dev = process.env.NODE_ENV !== 'production'
 const app = next({ dev })
@@ -366,12 +368,37 @@ app.prepare().then(() => {
                 data.targetUser,
                 data.isDM
               );
+              console.log(12345,data.targetUser.toLowerCase(),23114)
+              // Handle weillmikael's audio responses
+              if (data.targetUser.toLowerCase() === 'weillmikael') {
+                console.log('🎯 Server: Attempting audio response for weillmikael');
+                try {
+                  const audioMessage = await createAIAudioMessage({
+                    content: aiContent,
+                    aiUserId,
+                    channelId: data.channelId,
+                    isDM: data.isDM
+                  });
+
+                  // Emit the audio message
+                  if (data.isDM) {
+                    io.to(data.channelId).emit('dm_message_received', audioMessage);
+                  } else {
+                    io.to(data.channelId).emit('message_received', audioMessage);
+                  }
+                  return; // Exit after sending audio message
+                } catch (error) {
+                  console.error('Failed to create audio message, falling back to text:', error);
+                  // Continue to regular message creation below
+                }
+              }
             } else {
               // Regular AI response
               aiContent = await getChatCompletion(data.content.slice(4), data.isDM);
               aiUserId = 'AI_SYSTEM';
             }
-            
+
+            // Regular message creation for non-weillmikael or fallback
             const aiMessage = await prisma.message.create({
               data: {
                 content: aiContent,
@@ -389,7 +416,13 @@ app.prepare().then(() => {
                 }
               }
             });
-            io.to(data.channelId).emit('message_received', aiMessage);
+
+            if (data.isDM) {
+              io.to(data.channelId).emit('dm_message_received', aiMessage);
+            } else {
+              io.to(data.channelId).emit('message_received', aiMessage);
+            }
+
           } catch (error) {
             console.error('Error processing AI command:', error);
           }

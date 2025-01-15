@@ -41,6 +41,32 @@ export async function getPresignedViewUrl(fileKey: string) {
     return await getSignedUrl(s3Client, command, { expiresIn: 3600 });
 }
 
+// Server-side direct upload to S3
+export async function uploadToS3(
+  fileBuffer: Buffer,
+  fileName: string,
+  contentType: string
+): Promise<{ fileKey: string }> {
+  try {
+    const fileKey = generateFileKey(fileName);
+    
+    const command = new PutObjectCommand({
+      Bucket: process.env.AWS_BUCKET_NAME,
+      Key: fileKey,
+      Body: fileBuffer,
+      ContentType: contentType,
+    });
+
+    await s3Client.send(command);
+    console.log('✅ S3: Successfully uploaded file:', fileKey);
+    
+    return { fileKey };
+  } catch (error) {
+    console.error('❌ S3: Error uploading file:', error);
+    throw error;
+  }
+}
+
 // File type validation
 export const allowedFileTypes = new Set([
   'image/jpeg',

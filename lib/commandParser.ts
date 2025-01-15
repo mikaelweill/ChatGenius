@@ -1,3 +1,5 @@
+import { generateSpeech } from './tts';
+
 interface CommandResult {
   isCommand: boolean;
   command: string;
@@ -61,4 +63,5 @@ export function parseAICommand(message: string): CommandResult {
   }
 
   return defaultResult;
-} 
+}
+

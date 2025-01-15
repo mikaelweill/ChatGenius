@@ -36,13 +36,20 @@ export async function uploadFile(
   });
 
   if (!ALLOWED_TYPES.includes(file.type)) {
+    console.error('❌ Upload: Unsupported file type:', file.type);
     throw new Error(`File type ${file.type} not supported. Allowed types: ${ALLOWED_TYPES.join(', ')}`);
   }
 
   try {
+    console.log('📤 Upload: Starting audio upload:', {
+      name: file.name,
+      type: file.type,
+      size: file.size
+    });
+
     // 1. Get presigned URL from our API
     onProgress?.({
-      progress: 10,  // Show some progress while getting presigned URL
+      progress: 10,
       status: 'uploading'
     });
 
@@ -57,65 +64,16 @@ export async function uploadFile(
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Upload failed' }));
-      throw new Error(errorData.error || 'Upload failed');
+      const error = await response.text();
+      console.error('❌ Upload: Failed to upload file:', error);
+      throw new Error('Upload failed');
     }
 
-    const { uploadUrl, fileKey } = await response.json();
-
-    // 2. Upload to S3 with progress tracking
-    const xhr = new XMLHttpRequest();
-    
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable && onProgress) {
-        // Scale progress from 20-90% during actual upload
-        const progress = 20 + (event.loaded / event.total) * 70;
-        onProgress({
-          progress,
-          status: 'uploading'
-        });
-      }
-    };
-
-    return new Promise((resolve, reject) => {
-      xhr.onload = () => {
-        if (xhr.status === 200) {
-          onProgress?.({
-            progress: 100,
-            status: 'completed'
-          });
-          
-          resolve({
-            fileKey,
-            url: uploadUrl,
-            fileName: file.name,
-            fileType: file.type
-          });
-        } else {
-          reject(new Error('Upload failed'));
-        }
-      };
-
-      xhr.onerror = () => {
-        onProgress?.({
-          progress: 0,
-          status: 'error',
-          error: 'Upload failed'
-        });
-        reject(new Error('Upload failed'));
-      };
-
-      xhr.open('PUT', uploadUrl);
-      xhr.setRequestHeader('Content-Type', file.type);
-      xhr.send(file);
-    });
+    const data = await response.json();
+    console.log('✅ Upload: Successfully uploaded file:', data.fileKey);
+    return data;
   } catch (error) {
-    console.error('Upload error details:', error);
-    onProgress?.({
-      progress: 0,
-      status: 'error',
-      error: error instanceof Error ? error.message : 'Upload failed'
-    });
+    console.error('💥 Upload: Error uploading file:', error);
     throw error;
   }
 }
