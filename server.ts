@@ -8,6 +8,8 @@ import { parseAICommand } from './lib/commandParser'
 import { generateSpeech } from './lib/tts'
 import { createAIAudioMessage } from './lib/aiAudioMessage'
 import { vectorizeMessage, deleteChannelVectors, vectorizePDF } from './lib/vectorize'
+import { DIDClient } from './lib/did'
+import { createDIDVideoMessage } from './lib/did'
 
 const dev = process.env.NODE_ENV !== 'production'
 const app = next({ dev })
@@ -369,7 +371,6 @@ app.prepare().then(() => {
                 data.targetUser,
                 data.isDM
               );
-              console.log(12345,data.targetUser.toLowerCase(),23114)
               // Handle weillmikael's audio responses
               if (data.targetUser.toLowerCase() === 'weillmikael') {
                 console.log('🎯 Server: Attempting audio response for weillmikael');
@@ -380,6 +381,30 @@ app.prepare().then(() => {
                     channelId: data.channelId,
                     isDM: data.isDM
                   });
+
+                  // If there's an image attachment, create animated video
+                  if (data.attachment?.type.startsWith('image/')) {
+                    try {
+                      const videoMessage = await createDIDVideoMessage({
+                        content: aiContent,
+                        aiUserId,
+                        channelId: data.channelId,
+                        isDM: data.isDM,
+                        imageUrl: data.attachment.url,
+                        audioUrl: audioMessage.attachments[0].url
+                      });
+                      
+                      // Emit video message
+                      if (data.isDM) {
+                        io.to(data.channelId).emit('dm_message_received', videoMessage);
+                      } else {
+                        io.to(data.channelId).emit('message_received', videoMessage);
+                      }
+                      return;
+                    } catch (error) {
+                      console.error('Failed to create animated video:', error);
+                    }
+                  }
 
                   // Emit the audio message
                   if (data.isDM) {

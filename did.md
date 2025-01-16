@@ -1,7 +1,10 @@
 # D-ID Integration Planning
 
 ## Overview
-Integration of D-ID's animation API as a simple enhancement to our robust message system. Leveraging our existing file handling, TTS, and attachment infrastructure, we only need to add the D-ID API integration layer.
+Integration of D-ID's animation API as an enhancement to our AI responses. When a user sends an `/ai_weillmikael` command with an image, we'll:
+1. Generate the AI response and TTS audio (using existing flow)
+2. Use the provided image + generated audio to create an animated video
+3. Fall back to standard TTS if no image or if D-ID fails
 
 ## Current System Integration Points
 - OpenAI GPT-4 for response generation
@@ -17,9 +20,15 @@ Integration of D-ID's animation API as a simple enhancement to our robust messag
 
 ### Command Flow
 ```bash
-# Two possible flows:
-/ai_weillmikael [message]              # → Standard TTS response
-/ai_weillmikael [message] + [image]    # → Animated video response
+# Flow:
+/ai_weillmikael [message]              
+   → Generate AI response
+   → Convert to audio using TTS
+   → If image attached:
+       → Send image + audio to D-ID
+       → Return animated video
+   → If no image:
+       → Return standard audio response
 ```
 
 ### Message Flow Integration
@@ -35,6 +44,22 @@ interface MessageData {
       name: string;
     }
   }
+}
+```
+
+### D-ID API Integration
+```typescript
+// Core interfaces implemented
+interface CreateTalkRequest {
+  source_url: string;
+  script: {
+    type: 'text' | 'audio';
+    audio_url?: string;
+    input?: string;
+  };
+  config?: {
+    stitch: boolean;  // Keep full image context
+  };
 }
 ```
 
@@ -60,10 +85,17 @@ interface MessageData {
 
 ## Implementation Plan
 
-### Phase 1: Basic Setup (Simplified)
-- [ ] D-ID API client (core addition needed)
-- [ ] Face detection validation
-- [ ] Connect to existing message flow
+### Phase 1: Basic Setup
+- [x] D-ID API client
+- [x] Image capture component
+- [ ] Integration with aiAudioMessage.ts:
+  - [ ] Extract audio URL from message
+  - [ ] Pass to D-ID client
+  - [ ] Handle video response
+- [ ] Message handling:
+  - [ ] Detect image in AI commands
+  - [ ] Route to D-ID flow if image present
+  - [ ] Fall back to TTS if needed
 
 ### Phase 2: Enhanced Features
 - [ ] Usage tracking (5-min trial)
@@ -106,3 +138,9 @@ interface MessageData {
 4. Error notification approach?
 5. When should we force TTS fallback?
 6. Should we cache video results?
+
+## Next Steps
+1. Integrate D-ID client with message flow
+2. Add face detection before sending to D-ID
+3. Handle D-ID API responses in real-time
+4. Add progress tracking for video generation
