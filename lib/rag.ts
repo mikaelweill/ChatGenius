@@ -203,15 +203,17 @@ export async function testSimilaritySearch(
     if (!username) {
       const pdfSummaries = await searchPDFSummaries(query);
       if (pdfSummaries.length > 0) {
-        const topSummary = pdfSummaries[0];
-        const relevanceScore = topSummary.metadata.score || 0;
+        const [topSummary, relevanceScore] = pdfSummaries[0];
         
-        if (relevanceScore > config.rag.similarityThreshold) {
-          console.log(`📚 Found relevant PDF summary (score: ${relevanceScore} > ${config.rag.similarityThreshold})`);
+        if (relevanceScore > config.rag.minPdfScore) {
+          console.log(`📚 Found relevant PDF summary (score: ${relevanceScore} > ${config.rag.minPdfScore})`);
           const pdfChunks = await searchPDFChunks(query, topSummary.metadata.pdf_id);
-          searchResults.push([...pdfSummaries, ...pdfChunks]);
+          searchResults.push([
+            ...pdfSummaries.map(([doc]) => doc),
+            ...pdfChunks.map(([doc]) => doc)
+          ]);
         } else {
-          console.log(`📚 PDF summaries below relevance threshold (${relevanceScore} < ${config.rag.similarityThreshold})`);
+          console.log(`📚 PDF summaries below relevance threshold (${relevanceScore} < ${config.rag.minPdfScore})`);
         }
       }
     }
@@ -250,42 +252,44 @@ export async function similaritySearch(
 }
 
 // 1. RAG for PDF summaries
-export async function searchPDFSummaries(query: string): Promise<Document[]> {
+export async function searchPDFSummaries(query: string): Promise<[Document, number][]> {
   const store = await initializeVectorStore();
   
-  // First do a search without filter to see what's actually stored
   console.log('🔍 Checking PDF metadata in Pinecone...');
-  const unfiltered = await store.similaritySearch(query, 10);
+  const filter = { source: 'pdf_summary' };
+  console.log('Using filter:', filter);
   
-  unfiltered.forEach((doc, i) => {
-    console.log(`Document ${i} metadata:`, {
-      metadata: doc.metadata,
-      filter_used: { source: 'pdf_summary' },
-      content_preview: doc.pageContent.slice(0, 50)
+  try {
+    const summaryResults = await store.similaritySearchWithScore(query, 10, filter);
+    
+    // Log what we found with scores
+    summaryResults.forEach(([doc, score], i) => {
+      console.log(`PDF Summary ${i} metadata:`, {
+        metadata: doc.metadata,
+        content_preview: doc.pageContent.slice(0, 50),
+        score: score
+      });
     });
-  });
 
-  // Then try our filtered search
-  const summaryResults = await store.similaritySearch(query, 3, {
-    filter: { source: 'pdf_summary' }
-  });
-
-  console.log('📚 Found PDF summaries:', summaryResults.length);
-  return summaryResults;
+    console.log('📚 Found PDF summaries:', summaryResults.length);
+    return summaryResults;
+  } catch (error) {
+    console.error('❌ Error searching PDF summaries:', error);
+    return [];
+  }
 }
 
 // 2. RAG for PDF chunks
-export async function searchPDFChunks(query: string, pdfId: string): Promise<Document[]> {
+export async function searchPDFChunks(query: string, pdfId: string): Promise<[Document, number][]> {
   const store = await initializeVectorStore();
 
-  const chunkResults = await store.similaritySearch(query, 5, {
-    filter: {
-      "$and": [
-        { "source": { "$eq": "pdf_content" } },
-        { "pdf_id": { "$eq": pdfId } }
-      ]
-    }
-  });
+  const filter = {
+    "metadata.source": 'pdf_content',
+    "metadata.pdf_id": pdfId
+  };
+
+  console.log('Using chunks filter:', filter);
+  const chunkResults = await store.similaritySearchWithScore(query, 5, filter);
 
   console.log(`📄 Found PDF chunks for ${pdfId}:`, chunkResults.length);
   return chunkResults;

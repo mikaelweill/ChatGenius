@@ -16,52 +16,50 @@ const SYSTEM_PROMPT = `You are Claude, a helpful AI assistant. You have access t
    - PDF Summaries (source: 'pdf_summary'): High-level document overviews
    - PDF Content (source: 'pdf_content'): Specific document sections
 
-Instructions for using sources:
-- Check the 'source' field in metadata to identify the type of information
-- If PDF content is relevant to the question, prioritize it and cite the document: "According to [document title]..."
-- For technical details, prefer PDF chunks over summaries
-- Maintain a conversational tone even when citing documents
-- If combining chat history and PDF content, clearly distinguish between them
-- Only reference PDFs when they're directly relevant to the question
+IMPORTANT: When using PDF content, you MUST:
+1. Start your response with "According to [document title]..."
+2. Only use information that's directly from the provided context
+3. If combining multiple sources, clearly indicate which parts come from where
 
-Remember to:
-- Be concise and clear
-- Stay within the context provided
-- Acknowledge when information comes from different sources
-- Maintain a helpful and friendly tone`;
+Instructions for using sources:
+- Always cite the document title when using PDF content
+- For technical details, prefer PDF chunks over summaries
+- Maintain a conversational tone while being accurate
+- If information isn't in the provided context, say so
+- Be concise and clear`;
+
+// Helper to format context based on source
+function formatContextBySource(result: any): string {
+  const source = result.metadata?.source;
+  const title = result.metadata?.title || 'Unknown Document';
+  
+  if (source === 'pdf_content' || source === 'pdf_summary') {
+    return `PDF Content (${title}): "${result.pageContent}"`;
+  }
+  return `Chat Message: "${result.pageContent}"`;
+}
 
 // Create an enhanced prompt using RAG context
 async function createEnhancedPrompt(message: string, isDM: boolean = false): Promise<string> {
   try {
-    // Get relevant context using RAG, passing isDM parameter
     const relevantResults = await testSimilaritySearch(message, isDM);
     
-    // Format context messages
+    // Separate and format context by source
     const contextText = relevantResults
-      .map(result => `Previous Message: "${result.pageContent}"`)
+      .map(formatContextBySource)
       .join('\n\n');
 
-    // Create the enhanced prompt
-    return `You are an AI assistant in a chat application. You have access to previous messages that provide context for the current query.
+    return `${SYSTEM_PROMPT}
 
 RELEVANT CONTEXT:
 ${contextText}
 
 CURRENT MESSAGE: "${message}"
 
-INSTRUCTIONS:
-1. Use the provided context to inform your response
-2. Maintain a natural, conversational tone
-3. If the context doesn't provide enough information, provide a reasonable response based on general knowledge
-4. Keep responses concise but informative
-5. Stay focused on the current topic
-${isDM ? "6. This is a direct message conversation, so keep the context personal and specific to this chat." : "6. This is a channel conversation, so consider the broader channel context."}
-
-Please provide a response that incorporates the context while maintaining a natural flow of conversation.`;
+Remember: If using PDF content, ALWAYS start with "According to [document title]..." and stay within the provided context.`;
   } catch (error) {
     console.error('Error creating enhanced prompt:', error);
-    // If RAG fails, return a basic prompt
-    return `You are an AI assistant in a chat application. Please provide a helpful response to: "${message}"`;
+    return `You are an AI assistant. Please provide a helpful response to: "${message}"`;
   }
 }
 
@@ -128,7 +126,7 @@ Remember: Your response should be indistinguishable from how ${displayName} woul
         { role: "user", content: prompt }
       ],
       model: "gpt-4",
-      temperature: 0.9,  // Higher temperature for more personality
+      temperature: 0.8,  // Higher temperature for more personality
       max_tokens: 500
     });
 
