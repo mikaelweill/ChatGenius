@@ -5,5 +5,11 @@ export const config = {
     minPdfScore: 0.3,
     contextWindow: 3
   },
-  // other config sections
-} as const; 
+  did: {
+    enabled: true,
+    apiUrl: process.env.D_ID_API_URL,
+    apiKey: process.env.D_ID_API_KEY,
+    maxDuration: 300,
+    retryAttempts: 3
+  }
+} as const;

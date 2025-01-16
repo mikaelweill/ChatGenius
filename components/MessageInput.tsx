@@ -6,9 +6,10 @@ import { FileDropZone } from './FileDropZone'
 import { uploadFile } from '@/lib/uploadUtils'
 import { eventBus } from '@/lib/eventBus'
 import { parseAICommand, shouldShowAIFormatting } from '@/lib/commandParser'
-import { Mic, Video, Paperclip } from 'lucide-react'
+import { Paperclip } from 'lucide-react'
 import { VoiceRecorder } from './VoiceRecorder'
 import { VideoRecorder } from './VideoRecorder'
+import { ImageCapture } from './ImageCapture'
 import { UploadProgress } from './UploadProgress'
 
 interface UploadState {
@@ -321,6 +322,16 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
             <VoiceRecorder 
               onRecordingComplete={handleRecordingComplete}
               disabled={uploadState?.status === 'uploading'}
+            />
+
+            <ImageCapture
+              onImageCapture={(blob) => {
+                const file = new File([blob], 'camera-capture.jpg', {
+                  type: 'image/jpeg'
+                });
+                handleFileSelect(file);
+              }}
+              disabled={uploadState?.status === 'uploading' || uploadedFile !== null}
             />
 
             <VideoRecorder 
