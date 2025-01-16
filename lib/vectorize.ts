@@ -202,8 +202,8 @@ export async function vectorizePDF(attachmentId: string) {
       pageContent: summary,
       metadata: {
         pdf_id: attachment.id,
-        title: attachment.name,
         source: 'pdf_summary',
+        title: attachment.name,
         author: attachment.message.author.name,
         uploadedBy: attachment.message.authorId,
         messageId: attachment.messageId,
@@ -224,8 +224,8 @@ export async function vectorizePDF(attachmentId: string) {
       [{
         metadata: {
           pdf_id: attachment.id,
-          title: attachment.name,
           source: 'pdf_content',
+          title: attachment.name,
           author: attachment.message.author.name,
           uploadedBy: attachment.message.authorId,
           messageId: attachment.messageId,

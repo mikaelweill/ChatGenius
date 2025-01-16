@@ -2,6 +2,8 @@ import { OpenAIEmbeddings } from "@langchain/openai";
 import { PineconeStore } from "@langchain/pinecone";
 import { ChatOpenAI } from "@langchain/openai";
 import { Pinecone } from "@pinecone-database/pinecone";
+import { Document } from "langchain/document";
+import { config } from './config';
 
 // Types for our RAG system
 interface RAGResponse {
@@ -149,7 +151,7 @@ export async function initializeVectorStore() {
 
 // Enhanced test function with query generation and rank fusion
 export async function testSimilaritySearch(
-  query: string, 
+  query: string,
   isDM: boolean = false,
   username?: string
 ) {
@@ -162,8 +164,6 @@ export async function testSimilaritySearch(
     });
     
     const store = await initializeVectorStore();
-    
-    console.log('Generating multiple queries...');
     const queries = await generateQueries(query);
     
     console.log('Performing similarity searches...');
@@ -198,11 +198,29 @@ export async function testSimilaritySearch(
         return filtered;
       })
     );
-    
+
+    // Only search PDFs if it's the general AI (no username)
+    if (!username) {
+      const pdfSummaries = await searchPDFSummaries(query);
+      if (pdfSummaries.length > 0) {
+        const topSummary = pdfSummaries[0];
+        const relevanceScore = topSummary.metadata.score || 0;
+        
+        if (relevanceScore > config.rag.similarityThreshold) {
+          console.log(`📚 Found relevant PDF summary (score: ${relevanceScore} > ${config.rag.similarityThreshold})`);
+          const pdfChunks = await searchPDFChunks(query, topSummary.metadata.pdf_id);
+          searchResults.push([...pdfSummaries, ...pdfChunks]);
+        } else {
+          console.log(`📚 PDF summaries below relevance threshold (${relevanceScore} < ${config.rag.similarityThreshold})`);
+        }
+      }
+    }
+
     const fusedResults = reciprocalRankFusion(searchResults);
     console.log('Final fused results:', JSON.stringify(fusedResults, null, 2));
     
     return fusedResults;
+
   } catch (error) {
     console.error('Error in similarity search:', error);
     throw error;
@@ -229,4 +247,46 @@ export async function similaritySearch(
     console.error('Error in similarity search:', error);
     return [];
   }
+}
+
+// 1. RAG for PDF summaries
+export async function searchPDFSummaries(query: string): Promise<Document[]> {
+  const store = await initializeVectorStore();
+  
+  // First do a search without filter to see what's actually stored
+  console.log('🔍 Checking PDF metadata in Pinecone...');
+  const unfiltered = await store.similaritySearch(query, 10);
+  
+  unfiltered.forEach((doc, i) => {
+    console.log(`Document ${i} metadata:`, {
+      metadata: doc.metadata,
+      filter_used: { source: 'pdf_summary' },
+      content_preview: doc.pageContent.slice(0, 50)
+    });
+  });
+
+  // Then try our filtered search
+  const summaryResults = await store.similaritySearch(query, 3, {
+    filter: { source: 'pdf_summary' }
+  });
+
+  console.log('📚 Found PDF summaries:', summaryResults.length);
+  return summaryResults;
+}
+
+// 2. RAG for PDF chunks
+export async function searchPDFChunks(query: string, pdfId: string): Promise<Document[]> {
+  const store = await initializeVectorStore();
+
+  const chunkResults = await store.similaritySearch(query, 5, {
+    filter: {
+      "$and": [
+        { "source": { "$eq": "pdf_content" } },
+        { "pdf_id": { "$eq": pdfId } }
+      ]
+    }
+  });
+
+  console.log(`📄 Found PDF chunks for ${pdfId}:`, chunkResults.length);
+  return chunkResults;
 } 
