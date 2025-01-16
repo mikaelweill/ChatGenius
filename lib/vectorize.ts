@@ -6,6 +6,8 @@ import { prisma } from "./prisma";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 // import { generateSummary } from "./utils";
 import { getPresignedViewUrl } from "./s3";
+import { generatePDFSummary } from "./utils";
+import pdfParse from 'pdf-parse';
 
 const embeddings = new OpenAIEmbeddings({
   modelName: "text-embedding-3-small",
@@ -188,7 +190,26 @@ export async function vectorizePDF(attachmentId: string) {
 
     const presignedUrl = await getPresignedViewUrl(fileKey);
     const response = await fetch(presignedUrl);
-    const content = await response.text();
+    const arrayBuffer = await response.arrayBuffer();
+    const pdfData = await pdfParse(Buffer.from(arrayBuffer));
+    const content = pdfData.text;
+
+    // 1. Generate summary first
+    const summary = await generatePDFSummary(content, attachment.name);
+    
+    // 2. Create summary document
+    const summaryDoc = new Document({
+      pageContent: summary,
+      metadata: {
+        pdf_id: attachment.id,
+        title: attachment.name,
+        source: 'pdf_summary',
+        author: attachment.message.author.name,
+        uploadedBy: attachment.message.authorId,
+        messageId: attachment.messageId,
+        uploadedAt: attachment.message.createdAt
+      }
+    });
 
     // 3. Split into chunks
     const textSplitter = new RecursiveCharacterTextSplitter({
@@ -197,10 +218,10 @@ export async function vectorizePDF(attachmentId: string) {
       separators: ["\n\n", "\n", " ", ""],
     });
 
-    // 4. Create chunks with metadata as a Record<string, any>
+    // 4. Create content chunks (existing code)
     const chunks = await textSplitter.createDocuments(
       [content],
-      [{  // Wrap metadata in an array with a single object
+      [{
         metadata: {
           pdf_id: attachment.id,
           title: attachment.name,
@@ -213,22 +234,29 @@ export async function vectorizePDF(attachmentId: string) {
       }]
     );
 
-    // 5. Create vector IDs with full context
-    const vectorIds = chunks.map((_, i) => 
+    // 5. Generate vector IDs for both summary and chunks
+    const summaryId = attachment.message.channelId 
+      ? `ch_${attachment.message.channelId}_msg_${attachment.messageId}_pdf_${attachment.id}_summary`
+      : `dm_${attachment.message.directChatId}_msg_${attachment.messageId}_pdf_${attachment.id}_summary`;
+
+    const chunkIds = chunks.map((_, i) => 
       attachment.message.channelId 
         ? `ch_${attachment.message.channelId}_msg_${attachment.messageId}_pdf_${attachment.id}_chunk_${i}`
         : `dm_${attachment.message.directChatId}_msg_${attachment.messageId}_pdf_${attachment.id}_chunk_${i}`
     );
 
+    // 6. Store both in Pinecone
     const index = pinecone.index(process.env.PINECONE_INDEX!);
     const vectorStore = await PineconeStore.fromExistingIndex(
       embeddings,
       { pineconeIndex: index }
     );
 
-    await vectorStore.addDocuments(chunks, { ids: vectorIds });
+    await vectorStore.addDocuments([summaryDoc, ...chunks], { 
+      ids: [summaryId, ...chunkIds] 
+    });
 
-    console.log(`✅ Vectorized PDF ${attachment.name} into ${chunks.length} chunks`);
+    console.log(`✅ Vectorized PDF ${attachment.name}: 1 summary + ${chunks.length} chunks`);
   } catch (error) {
     console.error('❌ Error vectorizing PDF:', error);
     throw error;
