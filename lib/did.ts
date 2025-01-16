@@ -84,6 +84,7 @@ interface CreateDIDAudioMessageParams {
   isDM: boolean;
   imageUrl: string;
   audioUrl: string;
+  audioMessageId?: string;
 }
 
 export async function createDIDVideoMessage({
@@ -92,7 +93,8 @@ export async function createDIDVideoMessage({
   channelId,
   isDM,
   imageUrl,
-  audioUrl
+  audioUrl,
+  audioMessageId
 }: CreateDIDAudioMessageParams) {
   try {
     console.log('🎬 D-ID Flow Started:', {
@@ -170,13 +172,7 @@ export async function createDIDVideoMessage({
     );
 
     // Create message with video attachment
-    console.log('💾 Creating Prisma Message:', {
-      authorId: aiUserId,
-      channelId,
-      isDM,
-      timestamp: new Date().toISOString()
-    });
-
+    console.log('💾 Creating message with video attachment...');
     const message = await prisma.message.create({
       data: {
         content,
@@ -202,12 +198,14 @@ export async function createDIDVideoMessage({
         attachments: true
       }
     });
-    
-    console.log('✅ Message Created Successfully:', {
-      messageId: message.id,
-      attachments: message.attachments.length,
-      timestamp: new Date().toISOString()
-    });
+
+    // Delete the audio message since video was successful
+    if (audioMessageId) {
+      console.log('🗑️ Cleaning up audio message:', audioMessageId);
+      await prisma.message.delete({
+        where: { id: audioMessageId }
+      });
+    }
 
     return message;
     

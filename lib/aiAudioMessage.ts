@@ -1,4 +1,5 @@
 import { generateSpeech } from './tts';
+import { generateElevenLabsSpeech } from './11labs';
 import { uploadToS3 } from './s3';
 import { prisma } from './prisma';
 
@@ -18,22 +19,29 @@ export async function createAIAudioMessage({
   try {
     console.log('🎙️ Starting AI audio generation for:', content.slice(0, 50) + '...');
     
-    // 1. Generate audio from text
-    const audioBlob = await generateSpeech(content);
-    if (!audioBlob) {
+    // Choose TTS service based on aiUserId
+    let buffer;
+    if (aiUserId === 'AI_SYSTEM') {
+      console.log('🤖 Using Eleven Labs for AI_SYSTEM');
+      buffer = await generateElevenLabsSpeech({
+        text: content,
+        voice_id: 'your_chosen_voice_id',
+      });
+    } else {
+      console.log('🎯 Using Fish.audio for custom AI voice');
+      buffer = await generateSpeech(content);
+    }
+    
+    if (!buffer) {
       throw new Error('Failed to generate audio');
     }
     console.log('✅ Audio generated successfully');
-
-    // 2. Convert Blob to Buffer for S3 upload
-    const arrayBuffer = await audioBlob.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
 
     // 3. Upload directly to S3
     console.log('⬆️ Starting S3 upload...');
     const { fileKey } = await uploadToS3(
       buffer,
-      'ai-response.mp3',  // Changed to .mp3 since we're getting mp3 from TTS
+      'ai-response.mp3',
       'audio/mpeg'
     );
     console.log('✅ File uploaded to S3:', fileKey);

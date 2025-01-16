@@ -391,7 +391,8 @@ app.prepare().then(() => {
                         channelId: data.channelId,
                         isDM: data.isDM,
                         imageUrl: data.attachment.url,
-                        audioUrl: audioMessage.attachments[0].url
+                        audioUrl: audioMessage.attachments[0].url,
+                        audioMessageId: audioMessage.id
                       });
                       
                       // Emit video message

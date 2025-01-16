@@ -8,7 +8,7 @@ console.log('🔧 TTS Module Loading:', {
   env: process.env.NODE_ENV
 });
 
-export async function generateSpeech(text: string): Promise<Blob | null> {
+export async function generateSpeech(text: string): Promise<Buffer | null> {
   try {
     console.log('🎙️ TTS: Starting text-to-speech generation');
     console.log('📝 TTS: Processing text:', text.slice(0, 50) + '...');
@@ -51,9 +51,10 @@ export async function generateSpeech(text: string): Promise<Blob | null> {
       return null;
     }
 
-    const audioBlob = await response.blob();
-    console.log('✅ TTS: Successfully generated audio of size:', audioBlob.size);
-    return audioBlob;
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    console.log('✅ TTS: Successfully generated audio of size:', buffer.length);
+    return buffer;
   } catch (error) {
     console.error('💥 TTS: Error generating speech:', error);
     return null;
