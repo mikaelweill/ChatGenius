@@ -6,7 +6,7 @@ interface CommandResult {
   command: string;
   prompt: string;
   targetUser?: string;
-  language?: string;
+  language?: SupportedLanguage;
 }
 
 // Create regex pattern from supported languages
@@ -54,13 +54,13 @@ export function parseAICommand(message: string): CommandResult {
       isCommand: true,
       command: 'ai_user',
       prompt: prompt.trim(),
-      targetUser: username  // Keep underscores in the username
+      targetUser: username
     };
   }
 
-  // Check for language command
+  // Check for language command with new lang: syntax
   const languageMatch = trimmedMessage.match(
-    new RegExp(`^\/ai\\s+(.+?)\\s+in\\s+(${LANGUAGE_PATTERN})$`, 'i')
+    new RegExp(`^\/ai\\s+(.+?)\\s+lang:(${LANGUAGE_PATTERN})$`, 'i')
   );
   if (languageMatch) {
     const [_, prompt, language] = languageMatch;

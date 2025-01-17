@@ -11,6 +11,7 @@
     "clean": "rm -rf node_modules/.prisma"
   },
   "dependencies": {
+    "@11labs/react": "^0.0.4",
     "@auth/core": "^0.37.4",
     "@auth/prisma-adapter": "^2.7.4",
     "@aws-sdk/client-s3": "^3.726.1",
@@ -27,6 +28,7 @@
     "@types/socket.io": "^3.0.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "elevenlabs": "^1.50.2",
     "jose": "^4.15.9",
     "jsonwebtoken": "^9.0.2",
     "langchain": "^0.3.11",

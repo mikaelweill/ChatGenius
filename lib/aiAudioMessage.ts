@@ -2,20 +2,22 @@ import { generateSpeech } from './tts';
 import { generateElevenLabsSpeech } from './11labs';
 import { uploadToS3 } from './s3';
 import { prisma } from './prisma';
-import { config } from './config';
+import { config, type SupportedLanguage } from './config';
 
 interface AIAudioMessageParams {
   content: string;
   aiUserId: string;
   channelId: string;
   isDM: boolean;
+  language?: SupportedLanguage;
 }
 
 export async function createAIAudioMessage({ 
   content, 
   aiUserId, 
   channelId, 
-  isDM 
+  isDM,
+  language 
 }: AIAudioMessageParams) {
   try {
     console.log('🎙️ Starting AI audio generation for:', content.slice(0, 50) + '...');
@@ -26,7 +28,8 @@ export async function createAIAudioMessage({
       console.log('🤖 Using Eleven Labs for AI_SYSTEM');
       buffer = await generateElevenLabsSpeech({
         text: content,
-        voice_id: config.languages.aiVoiceId
+        voice_id: config.languages.aiVoiceId,
+        model_id: language ? 'eleven_multilingual_v2' : 'eleven_turbo_v2'
       });
     } else {
       console.log('🎯 Using Fish.audio for custom AI voice');

@@ -1,39 +1,54 @@
-const ELEVEN_LABS_API_URL = 'https://api.elevenlabs.io/v1';
+import { ElevenLabsClient } from 'elevenlabs';
+
+const client = new ElevenLabsClient({
+  apiKey: process.env.ELEVEN_LABS_API_KEY || ''
+});
 
 interface GenerateParams {
   text: string;
-  voice_id: string;
+  voice_id?: string;
   model_id?: string;
-  voice_settings?: {
-    stability: number;
-    similarity_boost: number;
-  };
 }
 
 export async function generateElevenLabsSpeech(params: GenerateParams): Promise<Buffer> {
-  const response = await fetch(
-    `${ELEVEN_LABS_API_URL}/text-to-speech/${params.voice_id}`,
-    {
-      method: 'POST',
-      headers: {
-        'xi-api-key': process.env.ELEVEN_LABS_API_KEY!,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        text: params.text,
-        model_id: params.model_id || 'eleven_turbo_v2',
-        voice_settings: params.voice_settings || {
-          stability: 0.5,
-          similarity_boost: 0.75
-        }
-      }),
+  console.log('🎙️ Starting generation:', {
+    text_preview: params.text.slice(0, 50) + '...'
+  });
+
+  try {
+    // Make direct fetch call to match curl command
+    const response = await fetch(
+      `https://api.elevenlabs.io/v1/text-to-speech/${params.voice_id || 'EXAVITQu4vr4xnSDxMaL'}`,
+      {
+        method: 'POST',
+        headers: {
+          'xi-api-key': process.env.ELEVEN_LABS_API_KEY || '',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text: params.text,
+          model_id: params.model_id || "eleven_multilingual_v2",
+          voice_settings: {
+            stability: 0.5,
+            similarity_boost: 0.75
+          }
+        })
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`ElevenLabs API error: ${response.status} ${response.statusText}`);
     }
-  );
 
-  if (!response.ok) {
-    throw new Error(`Eleven Labs API error: ${response.statusText}`);
+    // Get binary audio data directly
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    
+    console.log('✅ Audio generated:', { size: buffer.length });
+    return buffer;
+
+  } catch (error) {
+    console.error('🚨 Generation error:', error);
+    throw error;
   }
-
-  const arrayBuffer = await response.arrayBuffer();
-  return Buffer.from(arrayBuffer);
 } 

@@ -44,6 +44,8 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [users, setUsers] = useState<User[]>([])
   const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const [showLanguages, setShowLanguages] = useState(false);
+  const [highlightedLanguageIndex, setHighlightedLanguageIndex] = useState(0);
 
   useEffect(() => {
     async function fetchUsers() {
@@ -135,19 +137,27 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newContent = e.target.value
-    setContent(newContent)
+    const newContent = e.target.value;
+    setContent(newContent);
     
     // Show suggestions when typing /ai or /ai_ followed by any characters
     if (newContent.startsWith('/ai')) {
-      setShowSuggestions(true)
+      setShowSuggestions(true);
     } else {
-      setShowSuggestions(false)
+      setShowSuggestions(false);
+    }
+
+    // Show language suggestions when typing lang:
+    if (newContent.match(/\slang:$/i)) {
+      setShowLanguages(true);
+      setHighlightedLanguageIndex(0);
+    } else {
+      setShowLanguages(false);
     }
 
     // Check for UI formatting
-    setShowAIFormatting(shouldShowAIFormatting(newContent))
-  }
+    setShowAIFormatting(shouldShowAIFormatting(newContent));
+  };
 
   const getFilteredSuggestions = () => {
     if (!content.startsWith('/ai')) return users;
@@ -265,7 +275,7 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
 
     // Then check for language commands
     const languageMatch = message.match(
-      new RegExp(`^(\/ai\\s+.+?)(\\s+in\\s+(${LANGUAGE_PATTERN}))$`, 'i')
+      new RegExp(`^(\/ai\\s+.+?)(\\s+lang:(${LANGUAGE_PATTERN}))$`, 'i')
     );
     if (languageMatch) {
       const [_, command, languagePart] = languageMatch;
@@ -411,6 +421,33 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
                 }`}
               >
                 /ai_{user.name.toLowerCase().replace(/\s+/g, '_')} [prompt] - Get AI response as {user.name}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {showLanguages && (
+        <div className="absolute bottom-full left-0 bg-white shadow-lg rounded-md p-2 mt-2">
+          <div className="text-sm text-gray-500 mb-2">Available languages:</div>
+          <div className="space-y-1">
+            {config.languages.supported.map((lang, index) => (
+              <div 
+                key={lang}
+                className={`text-sm cursor-pointer px-2 py-1 rounded flex items-center justify-between ${
+                  index === highlightedLanguageIndex ? 'bg-indigo-100' : ''
+                }`}
+                onClick={() => {
+                  // Insert the selected language
+                  const beforeLang = content.match(/^.*lang:/i)?.[0] || '';
+                  setContent(beforeLang + lang);
+                  setShowLanguages(false);
+                }}
+              >
+                <span className="capitalize">{lang}</span>
+                <span className="text-gray-400 text-xs">
+                  {config.languages.nativeNames[lang]}
+                </span>
               </div>
             ))}
           </div>

@@ -17,9 +17,29 @@ export const config = {
       'spanish',
       'french',
       'german',
-      'japanese'
+      'japanese',
+      'italian',
+      'portuguese',
+      'polish',
+      'hindi',
+      'chinese',
+      'korean',
+      'arabic'
     ] as const,
-    aiVoiceId: 'your_chosen_voice_id'
+    nativeNames: {
+      spanish: 'Español',
+      french: 'Français',
+      german: 'Deutsch',
+      japanese: '日本語',
+      italian: 'Italiano',
+      portuguese: 'Português',
+      polish: 'Polski',
+      hindi: 'हिन्दी',
+      chinese: '中文',
+      korean: '한국어',
+      arabic: 'العربية'
+    },
+    aiVoiceId: 'nPczCjzI2devNBz1zQrb'
   }
 } as const;
 

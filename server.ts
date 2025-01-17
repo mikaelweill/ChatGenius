@@ -344,13 +344,7 @@ app.prepare().then(() => {
 
             if (data.targetUser) {
               // User-specific AI response
-              console.log('AI User Command:', {
-                targetUser: data.targetUser,
-                prompt: parsedCommand.prompt,
-                command: parsedCommand.command
-              });
-
-              // Find the original user
+              // Find the original user first
               const originalUser = await prisma.user.findFirst({
                 where: {
                   name: {
@@ -366,14 +360,44 @@ app.prepare().then(() => {
                 return;
               }
 
-              // Just construct the AI ID directly
+              // Now we can safely use originalUser.id
               aiUserId = `ai_${originalUser.id}`;
               aiContent = await getUserSpecificCompletion(
                 parsedCommand.prompt,
                 data.targetUser,
                 data.isDM
               );
-              // Handle weillmikael's audio responses
+
+              // Handle regular AI users first
+              if (data.targetUser.toLowerCase() !== 'weillmikael') {
+                const aiMessage = await prisma.message.create({
+                  data: {
+                    content: aiContent,
+                    authorId: aiUserId,
+                    ...(data.isDM ? { directChatId: data.channelId } : { channelId: data.channelId })
+                  },
+                  include: {
+                    author: {
+                      select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        status: true
+                      }
+                    }
+                  }
+                });
+
+                // Emit message
+                if (data.isDM) {
+                  io.to(data.channelId).emit('dm_message_received', aiMessage);
+                } else {
+                  io.to(data.channelId).emit('message_received', aiMessage);
+                }
+                return;
+              }
+
+              // Handle weillmikael's audio/video responses
               if (data.targetUser.toLowerCase() === 'weillmikael') {
                 console.log('🎯 Server: Attempting audio response for weillmikael');
                 try {
@@ -381,10 +405,11 @@ app.prepare().then(() => {
                     content: aiContent,
                     aiUserId,
                     channelId: data.channelId,
-                    isDM: data.isDM
+                    isDM: data.isDM,
+                    language: parsedCommand.language
                   });
 
-                  // If there's an image attachment, create animated video
+                  // If there's an image attachment, try video
                   if (data.attachment?.type.startsWith('image/')) {
                     try {
                       const videoMessage = await createDIDVideoMessage({
@@ -397,7 +422,7 @@ app.prepare().then(() => {
                         audioMessageId: audioMessage.id
                       });
                       
-                      // Emit video message
+                      // Emit video message and return immediately if successful
                       if (data.isDM) {
                         io.to(data.channelId).emit('dm_message_received', videoMessage);
                       } else {
@@ -409,58 +434,126 @@ app.prepare().then(() => {
                     }
                   }
 
-                  // Emit the audio message
+                  // Emit audio message if no video or video failed
                   if (data.isDM) {
                     io.to(data.channelId).emit('dm_message_received', audioMessage);
                   } else {
                     io.to(data.channelId).emit('message_received', audioMessage);
                   }
-                  return; // Exit after sending audio message
+                  return;
                 } catch (error) {
                   console.error('Failed to create audio message, falling back to text:', error);
                   // Continue to regular message creation below
                 }
               }
             } else {
-              // Regular AI response
+              // Regular AI response (AI_SYSTEM)
               aiContent = await getChatCompletion(
                 parsedCommand.prompt,
                 data.isDM,
                 parsedCommand.language
               );
               aiUserId = 'AI_SYSTEM';
+              
+              const audioMessage = await createAIAudioMessage({
+                content: aiContent,
+                aiUserId,
+                channelId: data.channelId,
+                isDM: data.isDM,
+                language: parsedCommand.language
+              });
+
+              // Emit audio message
+              if (data.isDM) {
+                io.to(data.channelId).emit('dm_message_received', audioMessage);
+              } else {
+                io.to(data.channelId).emit('message_received', audioMessage);
+              }
+
+              // Vectorize the message
+              await vectorizeMessage(audioMessage.id).catch(error => {
+                console.error('Failed to vectorize AI message:', error);
+              });
             }
 
-            // Regular message creation for non-weillmikael or fallback
-            const aiMessage = await prisma.message.create({
-              data: {
-                content: aiContent,
-                authorId: aiUserId,
-                ...(data.isDM ? { directChatId: data.channelId } : { channelId: data.channelId })
-              },
-              include: {
-                author: {
-                  select: {
-                    id: true,
-                    name: true,
-                    email: true,
-                    status: true
+            if (data.parentId) {
+              const updatedParentMessage = await prisma.message.findUnique({
+                where: { id: data.parentId },
+                include: {
+                  author: {
+                    select: {
+                      id: true,
+                      name: true,
+                      email: true,
+                      status: true
+                    }
+                  },
+                  reactions: {
+                    include: {
+                      user: {
+                        select: {
+                          id: true,
+                          name: true
+                        }
+                      }
+                    }
+                  },
+                  replies: {
+                    orderBy: {
+                      createdAt: 'asc'
+                    },
+                    include: {
+                      author: {
+                        select: {
+                          id: true,
+                          name: true,
+                          status: true
+                        }
+                      },
+                      reactions: {
+                        include: {
+                          user: {
+                            select: {
+                              id: true,
+                              name: true
+                            }
+                          }
+                        }
+                      }
+                    }
                   }
                 }
+              })
+              
+              if (updatedParentMessage) {
+                io.to(data.channelId).emit('message_updated', updatedParentMessage)
               }
-            });
-
-            if (data.isDM) {
-              io.to(data.channelId).emit('dm_message_received', aiMessage);
-            } else {
-              io.to(data.channelId).emit('message_received', aiMessage);
             }
 
+            // Log successful message creation
+            debugLog('Message created', {
+              messageId: savedMessage.id,
+              authorId: socket.data.userId,
+              isDM: data.isDM,
+              timestamp: new Date().toISOString()
+            })
+
             // Add vectorization
-            await vectorizeMessage(aiMessage.id).catch(error => {
-              console.error('Failed to vectorize AI message:', error);
+            await vectorizeMessage(savedMessage.id).catch(error => {
+              console.error('Failed to vectorize message:', error);
+              // Don't throw - we still want to send the message even if vectorization fails
             });
 
+            // Add PDF vectorization if there's a PDF attachment
+            if (savedMessage.attachments?.some(att => att.type === 'application/pdf')) {
+              for (const attachment of savedMessage.attachments) {
+                if (attachment.type === 'application/pdf') {
+                  await vectorizePDF(attachment.id).catch(error => {
+                    console.error('Failed to vectorize PDF:', error);
+                  });
+                }
+              }
+            }
           } catch (error) {
             console.error('Error processing AI command:', error);
           }
