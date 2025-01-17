@@ -1,11 +1,16 @@
 import { generateSpeech } from './tts';
+import { config, type SupportedLanguage } from './config'
 
 interface CommandResult {
   isCommand: boolean;
   command: string;
   prompt: string;
   targetUser?: string;
+  language?: string;
 }
+
+// Create regex pattern from supported languages
+const LANGUAGE_PATTERN = config.languages.supported.join('|');
 
 /**
  * Checks if the input should show AI command formatting
@@ -35,7 +40,8 @@ export function parseAICommand(message: string): CommandResult {
     isCommand: false,
     command: '',
     prompt: '',
-    targetUser: undefined
+    targetUser: undefined,
+    language: undefined
   };
 
   const trimmedMessage = message.trim();
@@ -52,7 +58,20 @@ export function parseAICommand(message: string): CommandResult {
     };
   }
 
-  // Check for regular /ai command
+  // Check for language command
+  const languageMatch = trimmedMessage.match(
+    new RegExp(`^\/ai\\s+(.+?)\\s+in\\s+(${LANGUAGE_PATTERN})$`, 'i')
+  );
+  if (languageMatch) {
+    const [_, prompt, language] = languageMatch;
+    return {
+      isCommand: true,
+      command: 'ai',
+      prompt: prompt.trim(),
+      language: language.toLowerCase() as SupportedLanguage
+    };
+  }
+
   if (trimmedMessage.startsWith('/ai ')) {
     return {
       isCommand: true,

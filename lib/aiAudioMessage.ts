@@ -2,6 +2,7 @@ import { generateSpeech } from './tts';
 import { generateElevenLabsSpeech } from './11labs';
 import { uploadToS3 } from './s3';
 import { prisma } from './prisma';
+import { config } from './config';
 
 interface AIAudioMessageParams {
   content: string;
@@ -25,7 +26,7 @@ export async function createAIAudioMessage({
       console.log('🤖 Using Eleven Labs for AI_SYSTEM');
       buffer = await generateElevenLabsSpeech({
         text: content,
-        voice_id: 'your_chosen_voice_id',
+        voice_id: config.languages.aiVoiceId
       });
     } else {
       console.log('🎯 Using Fish.audio for custom AI voice');

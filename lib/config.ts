@@ -11,5 +11,16 @@ export const config = {
     apiKey: process.env.D_ID_API_KEY,
     maxDuration: 300,
     retryAttempts: 3
+  },
+  languages: {
+    supported: [
+      'spanish',
+      'french',
+      'german',
+      'japanese'
+    ] as const,
+    aiVoiceId: 'your_chosen_voice_id'
   }
 } as const;
+
+export type SupportedLanguage = typeof config.languages.supported[number];

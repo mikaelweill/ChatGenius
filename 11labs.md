@@ -249,15 +249,15 @@ Note: Same AI voice/personality for all languages
 ## Implementation Plan
 
 ### Phase 1: Basic Setup
-- [ ] Add Eleven Labs client
-- [ ] Configure environment variables
-- [ ] Create voice selection system
-- [ ] Add language parsing to command system
+- [x] Add Eleven Labs client (11labs.ts created)
+- [x] Configure environment variables (API key added)
+- [x] Create voice selection system (AI_SYSTEM uses Eleven Labs)
+- [x] Add language parsing to command system
 
 ### Phase 2: Multilingual Support
 - [ ] Integrate with OpenAI for translations
 - [ ] Map languages to voice IDs
-- [ ] Add language validation
+- [x] Add language validation (in commandParser.ts)
 - [ ] Create multilingual message flow
 
 ### Phase 3: Voice Cloning

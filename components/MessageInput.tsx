@@ -11,6 +11,7 @@ import { VoiceRecorder } from './VoiceRecorder'
 import { VideoRecorder } from './VideoRecorder'
 import { ImageCapture } from './ImageCapture'
 import { UploadProgress } from './UploadProgress'
+import { config } from '../lib/config'
 
 interface UploadState {
   progress: number;
@@ -29,6 +30,9 @@ interface User {
   name: string;
   isAI: boolean;
 }
+
+// Create regex pattern from supported languages
+const LANGUAGE_PATTERN = config.languages.supported.join('|');
 
 export function MessageInput({ channelId, isDM = false }: { channelId: string, isDM?: boolean }) {
   const [content, setContent] = useState('')
@@ -241,6 +245,47 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
     }
   }
 
+  // Add language highlighting to existing command styling
+  const formatMessage = (message: string) => {
+    if (!shouldShowAIFormatting(message)) return message;
+    
+    // First check for user commands
+    if (message.startsWith('/ai_')) {
+      const userMatch = message.match(/^(\/ai_[a-zA-Z0-9_]+)(.*)$/);
+      if (userMatch) {
+        const [_, userCommand, rest] = userMatch;
+        return (
+          <>
+            <span className="text-blue-500 font-mono whitespace-pre">{userCommand}</span>
+            <span className="font-mono whitespace-pre">{rest}</span>
+          </>
+        );
+      }
+    }
+
+    // Then check for language commands
+    const languageMatch = message.match(
+      new RegExp(`^(\/ai\\s+.+?)(\\s+in\\s+(${LANGUAGE_PATTERN}))$`, 'i')
+    );
+    if (languageMatch) {
+      const [_, command, languagePart] = languageMatch;
+      return (
+        <>
+          <span className="text-blue-500 font-mono whitespace-pre">{command}</span>
+          <span className="text-green-500 font-mono whitespace-pre">{languagePart}</span>
+        </>
+      );
+    }
+
+    // Finally, basic /ai commands
+    return (
+      <>
+        <span className="text-blue-500 font-mono whitespace-pre">/ai</span>
+        <span className="font-mono whitespace-pre">{message.slice(3)}</span>
+      </>
+    );
+  };
+
   return (
     <div className="relative">
       <div className="absolute bottom-full w-full pb-2">
@@ -301,21 +346,7 @@ export function MessageInput({ channelId, isDM = false }: { channelId: string, i
               <div className={`absolute top-0 left-0 px-4 py-2 w-full pointer-events-none ${
                 showAIFormatting ? 'opacity-100' : 'opacity-0'
               }`}>
-                {content.startsWith('/ai_') ? (
-                  <>
-                    <span className="text-blue-500 font-mono whitespace-pre">
-                      {content.match(/^\/ai_[a-zA-Z0-9_]+/)?.[0]}
-                    </span>
-                    <span className="font-mono whitespace-pre">
-                      {content.slice((content.match(/^\/ai_[a-zA-Z0-9_]+/)?.[0] || '').length)}
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <span className="text-blue-500 font-mono whitespace-pre">/ai</span>
-                    <span className="font-mono whitespace-pre">{content.slice(3)}</span>
-                  </>
-                )}
+                {formatMessage(content)}
               </div>
             </div>
 
