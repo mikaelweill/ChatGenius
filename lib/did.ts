@@ -201,10 +201,24 @@ export async function createDIDVideoMessage({
 
     // Delete the audio message since video was successful
     if (audioMessageId) {
-      console.log('🗑️ Cleaning up audio message:', audioMessageId);
-      await prisma.message.delete({
-        where: { id: audioMessageId }
-      });
+      try {
+        console.log('��️ Cleaning up audio message and attachments:', audioMessageId);
+        
+        // First delete attachments
+        await prisma.attachment.deleteMany({
+          where: { messageId: audioMessageId }
+        });
+        
+        // Then delete the message
+        await prisma.message.delete({
+          where: { id: audioMessageId }
+        });
+        
+        console.log('✅ Successfully cleaned up audio message');
+      } catch (error) {
+        console.error('❌ Failed to clean up audio message:', error);
+        // Don't throw - we still want to return the video message even if cleanup fails
+      }
     }
 
     return message;
