@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { testSimilaritySearch } from './rag';
+import { type SupportedLanguage } from './config';
 
 if (!process.env.OPENAI_API_KEY) {
   throw new Error('Missing OPENAI_API_KEY environment variable');
@@ -63,14 +64,23 @@ Remember: If using PDF content, ALWAYS start with "According to [document title]
   }
 }
 
-export async function getChatCompletion(message: string, isDM: boolean = false): Promise<string> {
+export async function getChatCompletion(
+  message: string, 
+  isDM: boolean = false,
+  language?: SupportedLanguage
+): Promise<string> {
   try {
     // Get enhanced prompt with context, passing isDM parameter
     const enhancedPrompt = await createEnhancedPrompt(message, isDM);
     
+    // Only modify prompt if language is specified
+    const systemPrompt = language 
+      ? `${enhancedPrompt}\n\nIMPORTANT: Respond in ${language}. Ensure the response is natural and culturally appropriate.`
+      : enhancedPrompt;
+
     const completion = await openai.chat.completions.create({
       messages: [
-        { role: "system", content: enhancedPrompt },
+        { role: "system", content: systemPrompt },
         { role: "user", content: message }
       ],
       model: "gpt-4o-mini",

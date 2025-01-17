@@ -339,9 +339,11 @@ app.prepare().then(() => {
             let aiContent;
             let aiUserId;
 
+            // Parse command first for both flows
+            const parsedCommand = parseAICommand(data.content);
+
             if (data.targetUser) {
               // User-specific AI response
-              const parsedCommand = parseAICommand(data.content);
               console.log('AI User Command:', {
                 targetUser: data.targetUser,
                 prompt: parsedCommand.prompt,
@@ -421,7 +423,11 @@ app.prepare().then(() => {
               }
             } else {
               // Regular AI response
-              aiContent = await getChatCompletion(data.content.slice(4), data.isDM);
+              aiContent = await getChatCompletion(
+                parsedCommand.prompt,
+                data.isDM,
+                parsedCommand.language
+              );
               aiUserId = 'AI_SYSTEM';
             }
 
